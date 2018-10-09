@@ -1,41 +1,75 @@
 -- noinspection SpellCheckingInspectionForFile
 
 -- Zad. 1. Znajdź imiona wrogów, którzy dopuścili się incydentów w 2009r.
-
+SELECT IMIE_WROGA "WROG", OPIS_INCYDENTU "PRZEWINA"
+FROM WROGOWIE_KOCUROW
+WHERE EXTRACT(YEAR from DATA_INCYDENTU) = 2009;
 
 -- Zad. 2. Znajdź wszystkie kotki (płeć żeńska), które przystąpiły do stada między 1 września 2005r. a 31 lipca 2007r.
+SELECT IMIE, FUNKCJA, W_STADKU_OD "Z NAMI OD"
+FROM KOCURY
+WHERE PLEC = 'D'
+  AND W_STADKU_OD BETWEEN '2005-09-01' AND '2007-07-30';
 
-
--- Zad. 3. Wyświetl imiona, gatunki i stopnie wrogości nieprzekupnych wrogów. 
+-- Zad. 3. Wyświetl imiona, gatunki i stopnie wrogości nieprzekupnych wrogów.
 -- Wyniki mają być uporządkowane rosnąco według stopnia wrogości.
-
+SELECT IMIE_WROGA "WROG", GATUNEK, STOPIEN_WROGOSCI "STOPIEN WROGOSCI"
+FROM WROGOWIE
+ORDER BY STOPIEN_WROGOSCI;
 
 -- Zad. 4. Wyświetlić dane o kotach płci męskiej zebrane w jednej kolumnie postaci: 
 -- JACEK zwany PLACEK (fun. LOWCZY) lowi myszki w bandzie2 od 2008-12-01
 -- Wyniki należy uporządkować malejąco wg daty przystąpienia do stada. 
 -- W przypadku tej samej daty przystąpienia wyniki uporządkować alfabetycznie wg pseudonimów.
-
+SELECT IMIE || ' zwany ' || PSEUDO || ' (fun. ' || FUNKCJA || ') lowi myszki w bandzie ' || NR_BANDY || ' od ' ||
+       W_STADKU_OD
+FROM KOCURY
+WHERE PLEC = 'M'
+ORDER BY W_STADKU_OD DESC, IMIE;
 
 -- Zad. 5. Znaleźć pierwsze wystąpienie litery A i pierwsze wystąpienie litery L w każdym pseudonimie 
 -- a następnie zamienić znalezione litery na odpowiednio # i %. 
 -- Wykorzystać funkcje działające na łańcuchach. Brać pod uwagę tylko te pseudonimy, w których występują obie litery.
-
+-- REGEXP_REPLACE(<source_string>, <pattern>,<replace_string>, <position>, <occurrence>, <match_parameter>)
+SELECT PSEUDO, REGEXP_REPLACE(REGEXP_REPLACE(PSEUDO, 'L', '%', 1, 1), 'A', '#', 1, 1) "Po wymianie A na # oraz L na %"
+FROM KOCURY
+WHERE PSEUDO LIKE '%A%'
+  AND PSEUDO LIKE '%L%';
 
 -- Zad. 6. Wyświetlić imiona kotów z co najmniej dziewięcioletnim stażem
 -- (które dodatkowo przystępowały do stada od 1 marca do 30 września), daty ich przystąpienia do stada, 
 -- początkowy przydział myszy (obecny przydział, ze względu na podwyżkę po pół roku członkostwa, jest o 10% wyższy od początkowego), 
 -- datę wspomnianej podwyżki o 10% oraz aktualnym przydział myszy. 
 -- Wykorzystać odpowiednie funkcje działające na datach. W poniższym rozwiązaniu datą bieżącą jest 20.06.2018
-
+SELECT IMIE,
+       W_STADKU_OD                          "W stadku",
+       ROUND(0.9 * NVL(PRZYDZIAL_MYSZY, 0)) "Zjadal",
+       ADD_MONTHS(W_STADKU_OD, 6)           "Podwyzka",
+       NVL(PRZYDZIAL_MYSZY, 0)              "Zjada"
+FROM KOCURY
+WHERE ADD_MONTHS(W_STADKU_OD, 9 * 12) <= SYSDATE --'2018-06-20'
+  AND EXTRACT(MONTH FROM W_STADKU_OD) BETWEEN 3 AND 9;
 
 -- Zad. 7. Wyświetlić imiona, kwartalne przydziały myszy i kwartalne przydziały dodatkowe dla wszystkich kotów,
 -- u których przydział myszy jest większy od dwukrotnego przydziału dodatkowego ale nie mniejszy od 55.
-
+SELECT IMIE, 3 * NVL(PRZYDZIAL_MYSZY, 0) "MYSZY KWARTALNE", 3 * NVL(MYSZY_EXTRA, 0) "KWARTALNE DODATKI"
+FROM KOCURY
+WHERE NVL(PRZYDZIAL_MYSZY, 0) > 2 * NVL(MYSZY_EXTRA, 0)
+  AND NVL(PRZYDZIAL_MYSZY, 0) >= 55;
 
 -- Zad. 8. Wyświetlić dla każdego kota (imię) następujące informacje o całkowitym rocznym spożyciu myszy:
 -- wartość całkowitego spożycia jeśli przekracza 660, ’Limit’ jeśli jest równe 660, ’Ponizej 660’ jeśli jest mniejsze od 660. 
 -- Nie używać operatorów zbiorowych (UNION, INTERSECT, MINUS).
-
+SELECT IMIE,
+       CASE
+         WHEN (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) > 55
+                 THEN TO_CHAR((NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) * 12)
+         WHEN (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) = 55
+                 THEN 'Limit'
+         ELSE 'Ponizej 660'
+           END "Zjada Rocznie"
+FROM KOCURY
+ORDER BY IMIE;
 
 -- Zad. 9. Po kilkumiesięcznym, spowodowanym kryzysem, zamrożeniu wydawania myszy Tygrys z dniem bieżącym wznowił wypłaty zgodnie z zasadą,
 -- że koty, które przystąpiły do stada w pierwszej połowie miesiąca (łącznie z 15-m) 
