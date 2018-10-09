@@ -78,22 +78,75 @@ ORDER BY IMIE;
 -- W kolejnych miesiącach myszy wydawane są wszystkim kotom w ostatnią środę każdego miesiąca. 
 -- Wyświetlić dla każdego kota jego pseudonim, datę przystąpienia do stada oraz datę pierwszego po przerwie przydziału myszy, 
 -- przy założeniu, że datą bieżącą jest 25 i 27 wrzesień 2018.
+SELECT PSEUDO,
+       W_STADKU_OD "W STADKU",
+       CASE
+         WHEN '2018-09-25' > NEXT_DAY(LAST_DAY('2018-09-25') - INTERVAL '7' DAY, 'WEDNESDAY') OR
+              EXTRACT(DAY FROM W_STADKU_OD) > 15
+                 THEN NEXT_DAY(LAST_DAY(ADD_MONTHS('2018-09-25', 1)) - INTERVAL '7' DAY, 'WEDNESDAY')
+         ELSE NEXT_DAY(LAST_DAY('2018-09-25') - INTERVAL '7' DAY, 'WEDNESDAY')
+           END     "WYPLATA"
+FROM KOCURY
+ORDER BY W_STADKU_OD;
 
+SELECT PSEUDO,
+       W_STADKU_OD "W STADKU",
+       CASE
+         WHEN '2018-09-27' > NEXT_DAY(LAST_DAY('2018-09-27') - INTERVAL '7' DAY, 'WEDNESDAY') OR
+              EXTRACT(DAY FROM W_STADKU_OD) > 15
+                 THEN NEXT_DAY(LAST_DAY(ADD_MONTHS('2018-09-27', 1)) - INTERVAL '7' DAY, 'WEDNESDAY')
+         ELSE NEXT_DAY(LAST_DAY('2018-09-27') - INTERVAL '7' DAY, 'WEDNESDAY')
+           END     "WYPLATA"
+FROM KOCURY
+ORDER BY W_STADKU_OD;
 
 -- Zad. 10. Atrybut pseudo w tabeli Kocury jest kluczem głównym tej tabeli.
 -- Sprawdzić, czy rzeczywiście wszystkie pseudonimy są wzajemnie różne. Zrobić to samo dla atrybutu szef.
+SELECT PSEUDO || ' - ' || CASE
+                            WHEN COUNT(PSEUDO) = 1
+                                    THEN 'Unikalny'
+                            ELSE 'Nieunikalny'
+    END "Unikalnosc atr. PSEUDO"
+FROM KOCURY
+GROUP BY PSEUDO
+ORDER BY PSEUDO;
 
+SELECT SZEF || ' - ' || CASE
+                          WHEN COUNT(SZEF) = 1
+                                  THEN 'Unikalny'
+                          ELSE 'Nieunikalny'
+    END "Unikalnosc atr. SZEF"
+FROM KOCURY
+WHERE SZEF IS NOT NULL
+GROUP BY SZEF
+ORDER BY SZEF;
 
 -- Zad. 11. Znaleźć pseudonimy kotów posiadających co najmniej dwóch wrogów.
-
+SELECT PSEUDO "Pseudonim", COUNT(*) "Liczba wrogow"
+FROM WROGOWIE_KOCUROW
+GROUP BY PSEUDO
+HAVING COUNT(*) >= 2;
 
 -- Zad. 12. Znaleźć maksymalny całkowity przydział myszy dla wszystkich grup funkcyjnych
 -- (z pominięciem SZEFUNIA i kotów płci męskiej) o średnim całkowitym przydziale 
 -- (z uwzględnieniem dodatkowych przydziałów – myszy_extra) większym od 50.
-
+SELECT 'Liczba kotow = '                                  " ",
+       COUNT(*)                                           " ",
+       ' lowi jako '                                      " ",
+       FUNKCJA                                            " ",
+       ' i zjada max. '                                   " ",
+       MAX(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) " ",
+       ' myszy miesiecznie'                               " "
+FROM KOCURY
+WHERE PLEC != 'M'
+  AND FUNKCJA != 'SZEFUNIO'
+GROUP BY FUNKCJA
+HAVING AVG(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 1)) > 50;
 
 -- Zad. 13. Wyświetlić minimalny przydział myszy w każdej bandzie z podziałem na płcie.
-
+SELECT NR_BANDY "Nr bandy", PLEC "Plec", MIN(NVL(PRZYDZIAL_MYSZY, 0)) "Minimalny przydzial"
+FROM KOCURY
+GROUP BY NR_BANDY, PLEC;
 
 -- Zad. 14. Wyświetlić informację o kocurach (płeć męska) posiadających w hierarchii przełożonych szefa
 -- pełniącego funkcję BANDZIOR (wyświetlić także dane tego przełożonego). 
