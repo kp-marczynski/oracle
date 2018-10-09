@@ -151,13 +151,29 @@ GROUP BY NR_BANDY, PLEC;
 -- Zad. 14. Wyświetlić informację o kocurach (płeć męska) posiadających w hierarchii przełożonych szefa
 -- pełniącego funkcję BANDZIOR (wyświetlić także dane tego przełożonego). 
 -- Dane kotów podległych konkretnemu szefowi mają być wyświetlone zgodnie z ich miejscem w hierarchii podległości.
-
+SELECT LEVEL "Poziom", PSEUDO "Pseudonim", FUNKCJA "Funkcja", NR_BANDY "Nr bandy"
+FROM KOCURY
+WHERE PLEC = 'M'
+CONNECT BY PRIOR PSEUDO = SZEF
+START WITH FUNKCJA = 'BANDZIOR';
 
 -- Zad. 15. Przedstawić informację o podległości kotów posiadających dodatkowy przydział myszy
 -- tak aby imię kota stojącego najwyżej w hierarchii było wyświetlone z najmniejszym wcięciem 
 -- a pozostałe imiona z wcięciem odpowiednim do miejsca w hierarchii.
-
+SELECT LPAD(LEVEL - 1, 4 * (LEVEL - 1) + LENGTH(level - 1), '===>') || '            ' || IMIE "Hierarchia",
+       NVL(SZEF, 'Sam sobie panem')                                                           "Pseudo szefa",
+       FUNKCJA                                                                                "Funkcja"
+From KOCURY
+WHERE NVL(MYSZY_EXTRA, 0) > 0
+CONNECT BY PRIOR PSEUDO = SZEF
+START WITH SZEF IS NULL;
 
 -- Zad. 16. Wyświetlić określoną pseudonimami drogę służbową (przez wszystkich kolejnych przełożonych do głównego szefa)
 -- kotów płci męskiej o stażu dłuższym niż dziewięć lat (w poniższym rozwiązaniu datą bieżącą jest 20.06.2018) 
 -- nie posiadających dodatkowego przydziału myszy.
+SELECT LPAD(' ', 4 * (LEVEL - 1)) || PSEUDO "Droga sluzbowa"
+FROM KOCURY
+CONNECT BY PSEUDO = PRIOR SZEF
+START WITH PLEC = 'M'
+       AND MONTHS_BETWEEN('2018-06-20' /*SYSDATE*/, W_STADKU_OD) > 9 * 12
+       AND nvl(MYSZY_EXTRA, 0) = 0;
