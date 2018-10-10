@@ -77,7 +77,9 @@ ORDER BY IMIE;
 -- natomiast koty, które przystąpiły do stada po 15-ym, pierwszy po przerwie przydział myszy otrzymują w ostatnią środę następnego miesiąca. 
 -- W kolejnych miesiącach myszy wydawane są wszystkim kotom w ostatnią środę każdego miesiąca. 
 -- Wyświetlić dla każdego kota jego pseudonim, datę przystąpienia do stada oraz datę pierwszego po przerwie przydziału myszy, 
--- przy założeniu, że datą bieżącą jest 25 i 27 wrzesień 2018.
+-- przy założeniu, że datą bieżącą jest
+
+-- a) 25 wrzesień 2018.
 SELECT PSEUDO,
        W_STADKU_OD "W STADKU",
        CASE
@@ -89,6 +91,7 @@ SELECT PSEUDO,
 FROM KOCURY
 ORDER BY W_STADKU_OD;
 
+-- b) 27 wrzesień 2018.
 SELECT PSEUDO,
        W_STADKU_OD "W STADKU",
        CASE
