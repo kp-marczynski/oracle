@@ -43,7 +43,7 @@ WHERE PSEUDO LIKE '%A%'
 -- Wykorzystać odpowiednie funkcje działające na datach. W poniższym rozwiązaniu datą bieżącą jest 20.06.2018
 SELECT IMIE,
        W_STADKU_OD                          "W stadku",
-       ROUND(0.9 * NVL(PRZYDZIAL_MYSZY, 0)) "Zjadal",
+       ROUND(NVL(PRZYDZIAL_MYSZY, 0) / 1.1) "Zjadal",
        ADD_MONTHS(W_STADKU_OD, 6)           "Podwyzka",
        NVL(PRZYDZIAL_MYSZY, 0)              "Zjada"
 FROM KOCURY
@@ -177,6 +177,7 @@ START WITH SZEF IS NULL;
 SELECT LPAD(' ', 4 * (LEVEL - 1)) || PSEUDO "Droga sluzbowa"
 FROM KOCURY
 CONNECT BY PSEUDO = PRIOR SZEF
+       AND PSEUDO != 'RAFA'
 START WITH PLEC = 'M'
        AND MONTHS_BETWEEN('2018-06-20' /*SYSDATE*/, W_STADKU_OD) > 9 * 12
-       AND nvl(MYSZY_EXTRA, 0) = 0;
+       AND NVL(MYSZY_EXTRA, 0) = 0;

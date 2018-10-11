@@ -23,10 +23,9 @@ CREATE TABLE Funkcje (
 
 CREATE TABLE Wrogowie (
   imie_wroga       VARCHAR2(15) CONSTRAINT pk_wrogowie PRIMARY KEY,
-  stopien_wrogosci NUMBER(2) CONSTRAINT check_wrogowie_1 CHECK (stopien_wrogosci >= 1),
+  stopien_wrogosci NUMBER(2) CONSTRAINT check_wrogowie_1 CHECK (stopien_wrogosci BETWEEN 1 AND 10),
   gatunek          VARCHAR2(15),
-  lapowka          VARCHAR2(20),
-  CONSTRAINT check_wrogowie_2 CHECK (stopien_wrogosci <= 10)
+  lapowka          VARCHAR2(20)
 );
 
 CREATE TABLE Kocury (
@@ -49,8 +48,21 @@ CREATE TABLE Wrogowie_Kocurow (
   CONSTRAINT pk_wrogowiekocurow PRIMARY KEY (pseudo, imie_wroga)
 );
 
-INSERT ALL
-    INTO Bandy (nr_bandy, nazwa, teren, szef_bandy)
+ALTER TABLE Bandy
+  ADD CONSTRAINT fk_bandy_kocury FOREIGN KEY (szef_bandy) REFERENCES Kocury (pseudo);
+
+-------------------------------------------------------------
+
+ALTER TABLE Bandy
+  DISABLE CONSTRAINT fk_bandy_kocury;
+ALTER TABLE Kocury
+  DISABLE CONSTRAINT fk_kocury_bandy;
+ALTER TABLE Kocury
+  DISABLE CONSTRAINT fk_kocury_bandy;
+ALTER TABLE Kocury
+  DISABLE CONSTRAINT fk_kocury_funkcje;
+
+INSERT ALL INTO Bandy (nr_bandy, nazwa, teren, szef_bandy)
 VALUES (1, 'SZEFOSTWO', 'CALOSC', 'TYGRYS')
     INTO Bandy (nr_bandy, nazwa, teren, szef_bandy)
 VALUES (2, 'CZARNI RYCERZE', 'POLE', 'LYSY')
@@ -98,10 +110,7 @@ VALUES ('CHYTRUSEK', 5, 'LIS', 'KURCZAK')
 VALUES ('SMUKLA', 1, 'SOSNA', NULL)
     INTO Wrogowie (imie_wroga, stopien_wrogosci, gatunek, lapowka)
 VALUES ('BAZYLI', 3, 'KOGUT', 'KURA DO STADA')
-SELECT *
-FROM dual;
 
-INSERT ALL
     INTO Kocury (imie, plec, pseudo, funkcja, szef, w_stadku_od, przydzial_myszy, myszy_extra, nr_bandy)
 VALUES ('MRUCZEK', 'M', 'TYGRYS', 'SZEFUNIO', NULL, '2002-01-01', 103, 33, 1)
     INTO Kocury (imie, plec, pseudo, funkcja, szef, w_stadku_od, przydzial_myszy, myszy_extra, nr_bandy)
@@ -138,10 +147,7 @@ VALUES ('KSAWERY', 'M', 'MAN', 'LAPACZ', 'RAFA', '2008-07-12', 51, NULL, 4)
 VALUES ('MELA', 'D', 'DAMA', 'LAPACZ', 'RAFA', '2008-11-01', 51, NULL, 4)
     INTO Kocury (imie, plec, pseudo, funkcja, szef, w_stadku_od, przydzial_myszy, myszy_extra, nr_bandy)
 VALUES ('LUCEK', 'M', 'ZERO', 'KOT', 'KURKA', '2010-03-01', 43, NULL, 3)
-SELECT *
-FROM dual;
 
-INSERT ALL
     INTO Wrogowie_Kocurow (pseudo, imie_wroga, data_incydentu, opis_incydentu)
 VALUES ('TYGRYS', 'KAZIO', '2004-10-13', 'USILOWAL NABIC NA WIDLY')
     INTO Wrogowie_Kocurow (pseudo, imie_wroga, data_incydentu, opis_incydentu)
@@ -182,4 +188,10 @@ SELECT *
 FROM dual;
 
 ALTER TABLE Bandy
-  ADD CONSTRAINT fk_bandy_kocury FOREIGN KEY (szef_bandy) REFERENCES Kocury (pseudo);
+  ENABLE CONSTRAINT fk_bandy_kocury;
+ALTER TABLE Kocury
+  ENABLE CONSTRAINT fk_kocury_bandy;
+ALTER TABLE Kocury
+  ENABLE CONSTRAINT fk_kocury_bandy;
+ALTER TABLE Kocury
+  ENABLE CONSTRAINT fk_kocury_funkcje;
