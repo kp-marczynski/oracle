@@ -132,7 +132,15 @@ HAVING AVG(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0))
 
 -- Zad. 27. Znaleźć koty zajmujące pierwszych n miejsc pod względem całkowitej liczby spożywanych myszy (koty o tym samym spożyciu zajmują to samo miejsce!).
 -- Zadanie rozwiązać na cztery sposoby:
--- TODO a. wykorzystując podzapytanie skorelowane,
+-- a. wykorzystując podzapytanie skorelowane,
+SELECT PSEUDO, (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) "ZJADA"
+FROM KOCURY K
+WHERE &n > (SELECT COUNT(*)
+            FROM KOCURY K2
+            WHERE (NVL(K.PRZYDZIAL_MYSZY, 0) + NVL(K.MYSZY_EXTRA, 0)) <
+                  (NVL(K2.PRZYDZIAL_MYSZY, 0) + NVL(K2.MYSZY_EXTRA, 0)))
+ORDER BY "ZJADA" DESC;
+
 -- b. wykorzystując pseudokolumnę ROWNUM,
 SELECT PSEUDO, (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) "ZJADA"
 FROM KOCURY
@@ -142,7 +150,15 @@ WHERE (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0))
            WHERE ROWNUM <= &n)
 ORDER BY "ZJADA" DESC;
 
--- TODO c. wykorzystując złączenie relacji Kocury z relacją Kocury
+-- c. wykorzystując złączenie relacji Kocury z relacją Kocury
+SELECT K.PSEUDO, (NVL(K.PRZYDZIAL_MYSZY, 0) + NVL(K.MYSZY_EXTRA, 0)) "ZJADA"
+FROM KOCURY K,
+     KOCURY K2
+WHERE (NVL(K.PRZYDZIAL_MYSZY, 0) + NVL(K.MYSZY_EXTRA, 0)) <= (NVL(K2.PRZYDZIAL_MYSZY, 0) + NVL(K2.MYSZY_EXTRA, 0))
+GROUP BY K.PSEUDO, K.PRZYDZIAL_MYSZY, K.MYSZY_EXTRA
+HAVING &n >= COUNT(DISTINCT (NVL(K2.PRZYDZIAL_MYSZY, 0) + NVL(K2.MYSZY_EXTRA, 0)))
+ORDER BY "ZJADA" DESC;
+
 -- TODO d. wykorzystując funkcje analityczne.
 
 
@@ -179,19 +195,54 @@ HAVING COUNT(*) =
               HAVING COUNT(*) >=
                      (SELECT AVG(COUNT(*)) FROM KOCURY GROUP BY EXTRACT(YEAR FROM W_STADKU_OD))
               ORDER BY COUNT(*) ASC)
-        WHERE ROWNUM <= 1)
+        WHERE ROWNUM <= 1);
 -- GROUP BY "LICZBA WSTAPIEN";
 
 -- Zad. 29. Dla kocurów (płeć męska), dla których całkowity przydział myszy nie przekracza średniej w ich bandzie wyznaczyć następujące dane:
 -- imię, całkowite spożycie myszy, numer bandy, średnie całkowite spożycie w bandzie.
 -- Nie stosować perspektywy. Zadanie rozwiązać na trzy sposoby:
--- TODO a. ze złączeniem ale bez podzapytań,
--- TODO b. ze złączenie i z jedynym podzapytaniem w klauzurze FROM,
+-- a. ze złączeniem ale bez podzapytań,
+SELECT K.IMIE,
+       (NVL(K.PRZYDZIAL_MYSZY, 0) + NVL(K.MYSZY_EXTRA, 0))        "ZJADA",
+       K.NR_BANDY,
+       AVG((NVL(K2.PRZYDZIAL_MYSZY, 0) + NVL(K2.MYSZY_EXTRA, 0))) "SREDNIA BANDY"
+FROM KOCURY K
+       RIGHT JOIN KOCURY K2 ON K.NR_BANDY = K2.NR_BANDY
+WHERE K.PLEC = 'M'
+GROUP BY K.IMIE, K.PRZYDZIAL_MYSZY, K.MYSZY_EXTRA, K.NR_BANDY
+HAVING (NVL(K.PRZYDZIAL_MYSZY, 0) + NVL(K.MYSZY_EXTRA, 0)) <= AVG((NVL(K2.PRZYDZIAL_MYSZY, 0) + NVL(K2.MYSZY_EXTRA, 0)))
+ORDER BY K.NR_BANDY DESC;
+
+-- b. ze złączenie i z jedynym podzapytaniem w klauzurze FROM,
+SELECT IMIE, (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) "ZJADA", NR_BANDY, "SREDNIA BANDY"
+FROM KOCURY
+       LEFT JOIN (SELECT NR_BANDY banda, AVG((NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0))) "SREDNIA BANDY"
+                  FROM KOCURY
+                  GROUP BY NR_BANDY) ON NR_BANDY = banda
+WHERE PLEC = 'M'
+  AND (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) < "SREDNIA BANDY"
+ORDER BY NR_BANDY DESC;
+
 -- TODO c. bez złączeń i z dwoma podzapytaniami: w klauzurach SELECT i WHERE.
 
 
--- TODO Zad. 30. Wygenerować listę kotów z zaznaczonymi kotami o najwyższym i o najniższym stażu w swoich bandach.
+-- Zad. 30. Wygenerować listę kotów z zaznaczonymi kotami o najwyższym i o najniższym stażu w swoich bandach.
 -- Zastosować operatory zbiorowe.
+SELECT IMIE, W_STADKU_OD "WSTAPIL DO STADKA", 'NAJMLODSZY STAZEM W BAZNDZIE ' || NAZWA " "
+FROM KOCURY
+       LEFT JOIN BANDY ON KOCURY.NR_BANDY = BANDY.NR_BANDY
+WHERE W_STADKU_OD = (SELECT MIN(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_BANDY = K.NR_BANDY GROUP BY NR_BANDY)
+UNION
+SELECT IMIE, W_STADKU_OD "WSTAPIL DO STADKA", 'NAJSTARSZY STAZEM W BAZNDZIE ' || NAZWA " "
+FROM KOCURY
+       LEFT JOIN BANDY ON KOCURY.NR_BANDY = BANDY.NR_BANDY
+WHERE W_STADKU_OD = (SELECT MAX(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_BANDY = K.NR_BANDY GROUP BY NR_BANDY)
+UNION
+SELECT IMIE, W_STADKU_OD "WSTAPIL DO STADKA", ' '" "
+FROM KOCURY
+       LEFT JOIN BANDY ON KOCURY.NR_BANDY = BANDY.NR_BANDY
+WHERE W_STADKU_OD NOT IN ((SELECT MIN(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_BANDY = K.NR_BANDY GROUP BY NR_BANDY),
+                          (SELECT MAX(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_BANDY = K.NR_BANDY GROUP BY NR_BANDY))
 
 
 -- TODO Zad. 31. Zdefiniować perspektywę wybierającą następujące dane: nazwę bandy, średni, maksymalny i minimalny przydział myszy w bandzie,
