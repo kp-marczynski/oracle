@@ -22,10 +22,19 @@ ORDER BY K1.W_STADKU_OD DESC;
 
 -- Zad. 19. Dla kotów pełniących funkcję KOT i MILUSIA wyświetlić w kolejności hierarchii imiona wszystkich ich szefów.
 -- Zadanie rozwiązać na trzy sposoby:
--- TODO a. z wykorzystaniem tylko złączeń,
+-- a. z wykorzystaniem tylko złączeń,
+SELECT K1.IMIE "Imie", K1.FUNKCJA "Funkcja", K2.IMIE "Szef 1", K3.IMIE "Szef 2", K4.IMIE "Szef 3"
+FROM KOCURY K1
+       LEFT JOIN KOCURY K2 ON K1.SZEF = K2.PSEUDO
+       LEFT JOIN KOCURY K3 ON K2.SZEF = K3.PSEUDO
+       LEFT JOIN KOCURY K4 ON K3.SZEF = K4.PSEUDO
+WHERE K1.FUNKCJA IN ('KOT', 'MILUSIA');
 -- TODO b. z wykorzystaniem drzewa, operatora CONNECT_BY_ROOT i tabel przestawnych,
 -- TODO c. z wykorzystaniem drzewa i funkcji SYS_CONNECT_BY_PATH i operatora CONNECT_BY_ROOT.
-
+-- SELECT CONNECT_BY_ROOT IMIE, IMIE, FUNKCJA, CONNECT_BY_ROOT FUNKCJA, SYS_CONNECT_BY_PATH(IMIE, '|')
+-- FROM KOCURY
+-- CONNECT BY PSEUDO = PRIOR SZEF
+-- START WITH FUNKCJA IN ('KOT', 'MILUSIA');
 
 -- Zad. 20. Wyświetlić imiona wszystkich kotek, które uczestniczyły w incydentach po 01.01.2007.
 -- Dodatkowo wyświetlić nazwy band do których należą kotki, imiona ich wrogów wraz ze stopniem wrogości oraz datę incydentu.
@@ -242,7 +251,7 @@ SELECT IMIE, W_STADKU_OD "WSTAPIL DO STADKA", ' '" "
 FROM KOCURY
        LEFT JOIN BANDY ON KOCURY.NR_BANDY = BANDY.NR_BANDY
 WHERE W_STADKU_OD NOT IN ((SELECT MIN(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_BANDY = K.NR_BANDY GROUP BY NR_BANDY),
-                          (SELECT MAX(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_BANDY = K.NR_BANDY GROUP BY NR_BANDY))
+                          (SELECT MAX(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_BANDY = K.NR_BANDY GROUP BY NR_BANDY));
 
 
 -- TODO Zad. 31. Zdefiniować perspektywę wybierającą następujące dane: nazwę bandy, średni, maksymalny i minimalny przydział myszy w bandzie,
@@ -255,7 +264,69 @@ WHERE W_STADKU_OD NOT IN ((SELECT MIN(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_
 -- zwiększyć przydział myszy o 10% minimalnego przydziału w całym stadzie lub o 10 w zależności od tego czy podwyżka dotyczy kota płci żeńskiej czy kota płci męskiej.
 -- Przydział myszy extra dla kotów obu płci zwiększyć o 15% średniego przydziału extra w bandzie kota.
 -- Wyświetlić na ekranie wartości przed i po podwyżce a następnie wycofać zmiany.
+SELECT PSEUDO "Pseudonim", PLEC, PRZYDZIAL_MYSZY "Myszy przed podw.", MYSZY_EXTRA "Extra przed podw."
+FROM KOCURY
+WHERE PSEUDO IN (SELECT *
+                 FROM (SELECT PSEUDO
+                       FROM KOCURY
+                              JOIN BANDY USING (NR_BANDY)
+                       WHERE NAZWA = 'CZARNI RYCERZE'
+                       ORDER BY W_STADKU_OD)
+                 WHERE ROWNUM <= 3
+                 UNION
+                 SELECT *
+                 FROM (SELECT PSEUDO
+                       FROM KOCURY
+                              JOIN BANDY USING (NR_BANDY)
+                       WHERE NAZWA = 'LACIACI MYSLIWI'
+                       ORDER BY W_STADKU_OD)
+                 WHERE ROWNUM <= 3)
+ORDER BY NR_BANDY, W_STADKU_OD;
 
+UPDATE KOCURY K1
+SET PRZYDZIAL_MYSZY = CASE
+                        WHEN PLEC = 'D' THEN NVL(PRZYDZIAL_MYSZY, 0) + 0.1 * (SELECT MIN(NVL(PRZYDZIAL_MYSZY, 0))
+                                                                              FROM KOCURY)
+                        WHEN PLEC = 'M' THEN NVL(PRZYDZIAL_MYSZY, 0) + 10
+    END,
+    MYSZY_EXTRA     = NVL(MYSZY_EXTRA, 0) + 0.15 * (SELECT AVG(NVL(MYSZY_EXTRA, 0))
+                                                    FROM KOCURY
+                                                    WHERE K1.NR_BANDY = KOCURY.NR_BANDY)
+WHERE PSEUDO IN (SELECT *
+                 FROM (SELECT KOCURY.PSEUDO
+                       FROM KOCURY
+                              JOIN BANDY USING (NR_BANDY)
+                       WHERE NAZWA = 'CZARNI RYCERZE'
+                       ORDER BY W_STADKU_OD)
+                 WHERE ROWNUM <= 3
+                 UNION
+                 SELECT *
+                 FROM (SELECT PSEUDO
+                       FROM KOCURY
+                              JOIN BANDY USING (NR_BANDY)
+                       WHERE NAZWA = 'LACIACI MYSLIWI'
+                       ORDER BY W_STADKU_OD)
+                 WHERE ROWNUM <= 3);
+
+SELECT PSEUDO "Pseudonim", PLEC, PRZYDZIAL_MYSZY "Myszy po podw.", MYSZY_EXTRA "Extra po podw."
+FROM KOCURY
+WHERE PSEUDO IN (SELECT *
+                 FROM (SELECT PSEUDO
+                       FROM KOCURY
+                              JOIN BANDY USING (NR_BANDY)
+                       WHERE NAZWA = 'CZARNI RYCERZE'
+                       ORDER BY W_STADKU_OD)
+                 WHERE ROWNUM <= 3
+                 UNION ALL
+                 SELECT *
+                 FROM (SELECT PSEUDO
+                       FROM KOCURY
+                              JOIN BANDY USING (NR_BANDY)
+                       WHERE NAZWA = 'LACIACI MYSLIWI'
+                       ORDER BY W_STADKU_OD)
+                 WHERE ROWNUM <= 3)
+ORDER BY NR_BANDY, W_STADKU_OD;
+ROLLBACK;
 
 -- Zad. 33. Napisać zapytanie, w ramach którego obliczone zostaną sumy całkowitego spożycia myszy przez koty sprawujące każdą z funkcji z podziałem na bandy i płcie kotów.
 -- Podsumować przydziały dla każdej z funkcji.
