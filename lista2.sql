@@ -29,12 +29,26 @@ FROM KOCURY K1
        LEFT JOIN KOCURY K3 ON K2.SZEF = K3.PSEUDO
        LEFT JOIN KOCURY K4 ON K3.SZEF = K4.PSEUDO
 WHERE K1.FUNKCJA IN ('KOT', 'MILUSIA');
+
 -- TODO b. z wykorzystaniem drzewa, operatora CONNECT_BY_ROOT i tabel przestawnych,
--- TODO c. z wykorzystaniem drzewa i funkcji SYS_CONNECT_BY_PATH i operatora CONNECT_BY_ROOT.
--- SELECT CONNECT_BY_ROOT IMIE, IMIE, FUNKCJA, CONNECT_BY_ROOT FUNKCJA, SYS_CONNECT_BY_PATH(IMIE, '|')
+
+-- c. z wykorzystaniem drzewa i funkcji SYS_CONNECT_BY_PATH i operatora CONNECT_BY_ROOT.
+SELECT IMIE, FUNKCJA, "Imiona kolejnych szefow"
+FROM KOCURY K
+       JOIN (SELECT CONNECT_BY_ROOT PSEUDO "PSEUDO", SYS_CONNECT_BY_PATH(IMIE, '|') "Imiona kolejnych szefow"
+             FROM KOCURY
+             WHERE CONNECT_BY_ISLEAF = 1
+             CONNECT BY PSEUDO = PRIOR SZEF
+             START WITH PSEUDO IN (SELECT SZEF FROM KOCURY WHERE FUNKCJA IN ('KOT', 'MILUSIA'))) x on K.SZEF = x.PSEUDO
+WHERE FUNKCJA IN ('KOT', 'MILUSIA');
+
+-- SELECT CONNECT_BY_ROOT IMIE           "Imie",
+--        CONNECT_BY_ROOT FUNKCJA        "Funkcja",
+--        SYS_CONNECT_BY_PATH(IMIE, '|') "Imiona kolejnych szefow"
 -- FROM KOCURY
 -- CONNECT BY PSEUDO = PRIOR SZEF
--- START WITH FUNKCJA IN ('KOT', 'MILUSIA');
+-- START WITH FUNKCJA IN ('KOT', 'MILUSIA')
+-- ORDER BY CONNECT_BY_ROOT IMIE, LEVEL DESC;
 
 -- Zad. 20. Wyświetlić imiona wszystkich kotek, które uczestniczyły w incydentach po 01.01.2007.
 -- Dodatkowo wyświetlić nazwy band do których należą kotki, imiona ich wrogów wraz ze stopniem wrogości oraz datę incydentu.
@@ -168,8 +182,14 @@ GROUP BY K.PSEUDO, K.PRZYDZIAL_MYSZY, K.MYSZY_EXTRA
 HAVING &n >= COUNT(DISTINCT (NVL(K2.PRZYDZIAL_MYSZY, 0) + NVL(K2.MYSZY_EXTRA, 0)))
 ORDER BY "ZJADA" DESC;
 
--- TODO d. wykorzystując funkcje analityczne.
-
+-- d. wykorzystując funkcje analityczne.
+SELECT PSEUDO, (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) "ZJADA"
+FROM (SELECT PSEUDO,
+             PRZYDZIAL_MYSZY,
+             MYSZY_EXTRA,
+             DENSE_RANK() OVER (ORDER BY (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) DESC) "rank"
+      FROM KOCURY)
+WHERE "rank" <= &n;
 
 -- Zad. 28. Określić lata, dla których liczba wstąpień do stada jest najbliższa
 -- (od góry i od dołu) średniej liczbie wstąpień dla wszystkich lat
@@ -232,8 +252,21 @@ WHERE PLEC = 'M'
   AND (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) < "SREDNIA BANDY"
 ORDER BY NR_BANDY DESC;
 
--- TODO c. bez złączeń i z dwoma podzapytaniami: w klauzurach SELECT i WHERE.
-
+-- c. bez złączeń i z dwoma podzapytaniami: w klauzurach SELECT i WHERE.
+SELECT IMIE,
+       (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) "ZJADA",
+       NR_BANDY,
+       (SELECT AVG((NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)))
+        FROM KOCURY K2
+        WHERE K2.NR_BANDY = K.NR_BANDY
+        GROUP BY K2.NR_BANDY)                          "SREDNIA BANDY"
+FROM KOCURY K
+WHERE PLEC = 'M'
+  AND (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) < (SELECT AVG((NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)))
+                                                         FROM KOCURY K2
+                                                         WHERE K2.NR_BANDY = K.NR_BANDY
+                                                         GROUP BY K2.NR_BANDY)
+ORDER BY "SREDNIA BANDY";
 
 -- Zad. 30. Wygenerować listę kotów z zaznaczonymi kotami o najwyższym i o najniższym stażu w swoich bandach.
 -- Zastosować operatory zbiorowe.
@@ -253,14 +286,38 @@ FROM KOCURY
 WHERE W_STADKU_OD NOT IN ((SELECT MIN(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_BANDY = K.NR_BANDY GROUP BY NR_BANDY),
                           (SELECT MAX(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_BANDY = K.NR_BANDY GROUP BY NR_BANDY));
 
-
--- TODO Zad. 31. Zdefiniować perspektywę wybierającą następujące dane: nazwę bandy, średni, maksymalny i minimalny przydział myszy w bandzie,
+-- Zad. 31. Zdefiniować perspektywę wybierającą następujące dane: nazwę bandy, średni, maksymalny i minimalny przydział myszy w bandzie,
 -- całkowitą liczbę kotów w bandzie oraz liczbę kotów pobierających w bandzie przydziały dodatkowe.
 -- Posługując się zdefiniowaną perspektywą wybrać następujące dane o kocie, którego pseudonim podawany jest interaktywnie z klawiatury:
 -- pseudonim, imię, funkcja, przydział myszy, minimalny i maksymalny przydział myszy w jego bandzie oraz datę wstąpienia do stada.
+DROP VIEW Perspektywa31;
+CREATE VIEW Perspektywa31 (
+    NAZWA_BANDY, SRE_SPOZ, MAX_SPOZ, MIN_SPOZ, KOTY, KOTY_Z_DOD
+) AS
+  SELECT BANDY.NAZWA,
+         AVG(NVL(PRZYDZIAL_MYSZY, 0)),
+         MAX(NVL(PRZYDZIAL_MYSZY, 0)),
+         MIN(NVL(PRZYDZIAL_MYSZY, 0)),
+         COUNT(*),
+         COUNT(MYSZY_EXTRA)
+  FROM BANDY
+         LEFT JOIN KOCURY USING (NR_BANDY)
+  GROUP BY BANDY.NAZWA;
 
+SELECT *
+FROM Perspektywa31;
+SELECT PSEUDO                                  "PSEUDONIM",
+       IMIE,
+       FUNKCJA,
+       PRZYDZIAL_MYSZY                         "ZJADA",
+       'OD ' || MIN_SPOZ || ' DO ' || MAX_SPOZ "GRANICE SPOZYCIA",
+       W_STADKU_OD                             "LOWI OD"
+FROM KOCURY
+       JOIN BANDY USING (NR_BANDY)
+       JOIN Perspektywa31 ON BANDY.NAZWA = Perspektywa31.NAZWA_BANDY
+WHERE PSEUDO = &x;
 
--- TODO Zad. 32. Dla kotów o trzech najdłuższym stażach w połączonych bandach CZARNI RYCERZE i ŁACIACI MYŚLIWI
+-- Zad. 32. Dla kotów o trzech najdłuższym stażach w połączonych bandach CZARNI RYCERZE i ŁACIACI MYŚLIWI
 -- zwiększyć przydział myszy o 10% minimalnego przydziału w całym stadzie lub o 10 w zależności od tego czy podwyżka dotyczy kota płci żeńskiej czy kota płci męskiej.
 -- Przydział myszy extra dla kotów obu płci zwiększyć o 15% średniego przydziału extra w bandzie kota.
 -- Wyświetlić na ekranie wartości przed i po podwyżce a następnie wycofać zmiany.
@@ -332,4 +389,5 @@ ROLLBACK;
 -- Podsumować przydziały dla każdej z funkcji.
 -- Zadanie wykonać na dwa sposoby:
 -- TODO a. z wykorzystaniem tzw. raportu macierzowego,
+
 -- TODO b. z wykorzystaniem klauzuli PIVOT
