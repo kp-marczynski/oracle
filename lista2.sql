@@ -5,7 +5,7 @@
 -- Nie stosować podzapytań.
 SELECT KOCURY.PSEUDO "POLUJE W POLU", KOCURY.PRZYDZIAL_MYSZY, BANDY.NAZWA "BANDA"
 FROM KOCURY
-       INNER JOIN BANDY USING (NR_BANDY)
+       JOIN BANDY USING (NR_BANDY)
 WHERE KOCURY.PRZYDZIAL_MYSZY > 50
   AND BANDY.TEREN IN ('POLE', 'CALOSC')
 ORDER BY KOCURY.PRZYDZIAL_MYSZY DESC;
@@ -23,7 +23,11 @@ ORDER BY K1.W_STADKU_OD DESC;
 -- Zad. 19. Dla kotów pełniących funkcję KOT i MILUSIA wyświetlić w kolejności hierarchii imiona wszystkich ich szefów.
 -- Zadanie rozwiązać na trzy sposoby:
 -- a. z wykorzystaniem tylko złączeń,
-SELECT K1.IMIE "Imie", K1.FUNKCJA "Funkcja", K2.IMIE "Szef 1", K3.IMIE "Szef 2", K4.IMIE "Szef 3"
+SELECT K1.IMIE           "Imie",
+       K1.FUNKCJA        "Funkcja",
+       NVL(K2.IMIE, ' ') "Szef 1",
+       NVL(K3.IMIE, ' ') "Szef 2",
+       NVL(K4.IMIE, ' ') "Szef 3"
 FROM KOCURY K1
        LEFT JOIN KOCURY K2 ON K1.SZEF = K2.PSEUDO
        LEFT JOIN KOCURY K3 ON K2.SZEF = K3.PSEUDO
@@ -43,7 +47,7 @@ FROM (SELECT CONNECT_BY_ROOT IMIE "Imie", CONNECT_BY_ROOT FUNKCJA "Funkcja", IMI
 -- c. z wykorzystaniem drzewa i funkcji SYS_CONNECT_BY_PATH i operatora CONNECT_BY_ROOT.
 SELECT IMIE, FUNKCJA, "Imiona kolejnych szefow"
 FROM KOCURY K
-       JOIN (SELECT CONNECT_BY_ROOT PSEUDO "PSEUDO", SYS_CONNECT_BY_PATH(IMIE, '|') "Imiona kolejnych szefow"
+       JOIN (SELECT CONNECT_BY_ROOT PSEUDO "PSEUDO", SYS_CONNECT_BY_PATH(IMIE, ' | ') "Imiona kolejnych szefow"
              FROM KOCURY
              WHERE CONNECT_BY_ISLEAF = 1
              CONNECT BY PSEUDO = PRIOR SZEF
@@ -66,9 +70,9 @@ SELECT IMIE             "Imie kotki",
        STOPIEN_WROGOSCI "Ocena wroga",
        DATA_INCYDENTU   "Data inc."
 FROM (KOCURY
-    INNER JOIN WROGOWIE_KOCUROW USING (PSEUDO))
-       INNER JOIN WROGOWIE USING (IMIE_WROGA)
-       INNER JOIN BANDY USING (NR_BANDY)
+    JOIN WROGOWIE_KOCUROW USING (PSEUDO))
+       JOIN WROGOWIE USING (IMIE_WROGA)
+       JOIN BANDY USING (NR_BANDY)
 WHERE PLEC = 'D'
   AND DATA_INCYDENTU > '2007-01-01'
 ORDER BY IMIE;
@@ -76,14 +80,14 @@ ORDER BY IMIE;
 -- Zad. 21. Określić ile kotów w każdej z band posiada wrogów
 SELECT BANDY.NAZWA "Nazwa bandy", COUNT(DISTINCT PSEUDO) "Koty z wrogami"
 FROM (KOCURY
-    INNER JOIN WROGOWIE_KOCUROW USING (PSEUDO))
-       INNER JOIN BANDY USING (NR_BANDY)
+    JOIN WROGOWIE_KOCUROW USING (PSEUDO))
+       JOIN BANDY USING (NR_BANDY)
 GROUP BY BANDY.NAZWA;
 
 -- Zad. 22. Znaleźć koty (wraz z pełnioną funkcją), które posiadają więcej niż jednego wroga.
 SELECT MIN(FUNKCJA) "Funkcja", PSEUDO "Pseudonim kota", COUNT(*) "Liczba wrogow"
 FROM KOCURY
-       INNER JOIN WROGOWIE_KOCUROW USING (PSEUDO)
+       JOIN WROGOWIE_KOCUROW USING (PSEUDO)
 GROUP BY PSEUDO
 HAVING COUNT(*) > 1;
 
@@ -122,7 +126,7 @@ FROM BANDY
 MINUS
 SELECT NR_BANDY, NAZWA, TEREN
 FROM BANDY
-       INNER JOIN KOCURY USING (NR_BANDY);
+       JOIN KOCURY USING (NR_BANDY);
 
 -- Zad. 25. Znaleźć koty, których przydział myszy jest nie mniejszy
 -- od potrojonego najwyższego przydziału spośród przydziałów wszystkich MILUŚ operujących w SADZIE.
@@ -133,7 +137,7 @@ WHERE NVL(PRZYDZIAL_MYSZY, 0) >=
       3 * (SELECT *
            FROM (SELECT NVL(PRZYDZIAL_MYSZY, 0)
                  FROM KOCURY
-                        INNER JOIN BANDY USING (NR_BANDY)
+                        JOIN BANDY USING (NR_BANDY)
                  WHERE TEREN IN ('SAD', 'CALOSC')
                    AND FUNKCJA = 'MILUSIA'
                  ORDER BY PRZYDZIAL_MYSZY DESC)
@@ -147,19 +151,13 @@ FROM KOCURY
 WHERE FUNKCJA != 'SZEFUNIO'
 GROUP BY FUNKCJA
 HAVING AVG(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0))
-         IN ((SELECT *
-              FROM (SELECT AVG(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) "result"
-                    FROM KOCURY
-                    WHERE FUNKCJA != 'SZEFUNIO'
-                    GROUP BY FUNKCJA
-                    ORDER BY "result" DESC)
-              WHERE ROWNUM <= 1), (SELECT *
-                                   FROM (SELECT AVG(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) "result"
-                                         FROM KOCURY
-                                         WHERE FUNKCJA != 'SZEFUNIO'
-                                         GROUP BY FUNKCJA
-                                         ORDER BY "result")
-                                   WHERE ROWNUM <= 1));
+         IN ((SELECT MAX(AVG(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0))) "result"
+              FROM KOCURY
+              WHERE FUNKCJA != 'SZEFUNIO'
+              GROUP BY FUNKCJA), (SELECT MIN(AVG(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0))) "result"
+                                  FROM KOCURY
+                                  WHERE FUNKCJA != 'SZEFUNIO'
+                                  GROUP BY FUNKCJA));
 
 -- Zad. 27. Znaleźć koty zajmujące pierwszych n miejsc pod względem całkowitej liczby spożywanych myszy (koty o tym samym spożyciu zajmują to samo miejsce!).
 -- Zadanie rozwiązać na cztery sposoby:
@@ -191,10 +189,9 @@ HAVING &n >= COUNT(DISTINCT (NVL(K2.PRZYDZIAL_MYSZY, 0) + NVL(K2.MYSZY_EXTRA, 0)
 ORDER BY "ZJADA" DESC;
 
 -- d. wykorzystując funkcje analityczne.
-SELECT PSEUDO, (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) "ZJADA"
+SELECT PSEUDO, "ZJADA"
 FROM (SELECT PSEUDO,
-             PRZYDZIAL_MYSZY,
-             MYSZY_EXTRA,
+             (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0))                                   "ZJADA",
              DENSE_RANK() OVER (ORDER BY (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) DESC) "rank"
       FROM KOCURY)
 WHERE "rank" <= &n;
@@ -206,14 +203,11 @@ SELECT TO_CHAR(EXTRACT(YEAR FROM W_STADKU_OD)) "ROK", COUNT(*) "LICZBA WSTAPIEN"
 FROM KOCURY
 GROUP BY EXTRACT(YEAR FROM W_STADKU_OD)
 HAVING COUNT(*) =
-       (SELECT *
-        FROM (SELECT COUNT(*)
-              FROM KOCURY
-              GROUP BY EXTRACT(YEAR FROM W_STADKU_OD)
-              HAVING COUNT(*) <=
-                     (SELECT AVG(COUNT(*)) FROM KOCURY GROUP BY EXTRACT(YEAR FROM W_STADKU_OD))
-              ORDER BY COUNT(*) DESC)
-        WHERE ROWNUM <= 1)
+       (SELECT MAX(COUNT(*))
+        FROM KOCURY
+        GROUP BY EXTRACT(YEAR FROM W_STADKU_OD)
+        HAVING COUNT(*) <=
+               (SELECT AVG(COUNT(*)) FROM KOCURY GROUP BY EXTRACT(YEAR FROM W_STADKU_OD)))
 
 UNION ALL
 SELECT 'Srednia', AVG(COUNT(*))
@@ -225,15 +219,11 @@ SELECT TO_CHAR(EXTRACT(YEAR FROM W_STADKU_OD)), COUNT(*)
 FROM KOCURY
 GROUP BY EXTRACT(YEAR FROM W_STADKU_OD)
 HAVING COUNT(*) =
-       (SELECT *
-        FROM (SELECT COUNT(*)
-              FROM KOCURY
-              GROUP BY EXTRACT(YEAR FROM W_STADKU_OD)
-              HAVING COUNT(*) >=
-                     (SELECT AVG(COUNT(*)) FROM KOCURY GROUP BY EXTRACT(YEAR FROM W_STADKU_OD))
-              ORDER BY COUNT(*) ASC)
-        WHERE ROWNUM <= 1);
--- GROUP BY "LICZBA WSTAPIEN";
+       (SELECT MIN(COUNT(*))
+        FROM KOCURY
+        GROUP BY EXTRACT(YEAR FROM W_STADKU_OD)
+        HAVING COUNT(*) >=
+               (SELECT AVG(COUNT(*)) FROM KOCURY GROUP BY EXTRACT(YEAR FROM W_STADKU_OD)));
 
 -- Zad. 29. Dla kocurów (płeć męska), dla których całkowity przydział myszy nie przekracza średniej w ich bandzie wyznaczyć następujące dane:
 -- imię, całkowite spożycie myszy, numer bandy, średnie całkowite spożycie w bandzie.
@@ -283,12 +273,12 @@ FROM KOCURY
        LEFT JOIN BANDY ON KOCURY.NR_BANDY = BANDY.NR_BANDY
 WHERE W_STADKU_OD = (SELECT MIN(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_BANDY = K.NR_BANDY GROUP BY NR_BANDY)
 UNION
-SELECT IMIE, W_STADKU_OD "WSTAPIL DO STADKA", 'NAJSTARSZY STAZEM W BAZNDZIE ' || NAZWA " "
+SELECT IMIE, W_STADKU_OD, 'NAJSTARSZY STAZEM W BAZNDZIE ' || NAZWA
 FROM KOCURY
        LEFT JOIN BANDY ON KOCURY.NR_BANDY = BANDY.NR_BANDY
 WHERE W_STADKU_OD = (SELECT MAX(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_BANDY = K.NR_BANDY GROUP BY NR_BANDY)
 UNION
-SELECT IMIE, W_STADKU_OD "WSTAPIL DO STADKA", ' '" "
+SELECT IMIE, W_STADKU_OD, ' '
 FROM KOCURY
        LEFT JOIN BANDY ON KOCURY.NR_BANDY = BANDY.NR_BANDY
 WHERE W_STADKU_OD NOT IN ((SELECT MIN(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_BANDY = K.NR_BANDY GROUP BY NR_BANDY),
@@ -298,8 +288,8 @@ WHERE W_STADKU_OD NOT IN ((SELECT MIN(W_STADKU_OD) FROM KOCURY K WHERE BANDY.NR_
 -- całkowitą liczbę kotów w bandzie oraz liczbę kotów pobierających w bandzie przydziały dodatkowe.
 -- Posługując się zdefiniowaną perspektywą wybrać następujące dane o kocie, którego pseudonim podawany jest interaktywnie z klawiatury:
 -- pseudonim, imię, funkcja, przydział myszy, minimalny i maksymalny przydział myszy w jego bandzie oraz datę wstąpienia do stada.
-DROP VIEW Perspektywa31;
-CREATE VIEW Perspektywa31 (
+DROP VIEW Podsumowanie_bandy;
+CREATE VIEW Podsumowanie_bandy (
     NAZWA_BANDY, SRE_SPOZ, MAX_SPOZ, MIN_SPOZ, KOTY, KOTY_Z_DOD
 ) AS
   SELECT BANDY.NAZWA,
@@ -313,7 +303,8 @@ CREATE VIEW Perspektywa31 (
   GROUP BY BANDY.NAZWA;
 
 SELECT *
-FROM Perspektywa31;
+FROM Podsumowanie_bandy;
+
 SELECT PSEUDO                                  "PSEUDONIM",
        IMIE,
        FUNKCJA,
@@ -322,7 +313,7 @@ SELECT PSEUDO                                  "PSEUDONIM",
        W_STADKU_OD                             "LOWI OD"
 FROM KOCURY
        JOIN BANDY USING (NR_BANDY)
-       JOIN Perspektywa31 ON BANDY.NAZWA = Perspektywa31.NAZWA_BANDY
+       JOIN Podsumowanie_bandy ON BANDY.NAZWA = Podsumowanie_bandy.NAZWA_BANDY
 WHERE PSEUDO = &x;
 
 -- Zad. 32. Dla kotów o trzech najdłuższym stażach w połączonych bandach CZARNI RYCERZE i ŁACIACI MYŚLIWI
@@ -331,21 +322,18 @@ WHERE PSEUDO = &x;
 -- Wyświetlić na ekranie wartości przed i po podwyżce a następnie wycofać zmiany.
 SELECT PSEUDO "Pseudonim", PLEC, PRZYDZIAL_MYSZY "Myszy przed podw.", MYSZY_EXTRA "Extra przed podw."
 FROM KOCURY
-WHERE PSEUDO IN (SELECT *
-                 FROM (SELECT PSEUDO
-                       FROM KOCURY
-                              JOIN BANDY USING (NR_BANDY)
-                       WHERE NAZWA = 'CZARNI RYCERZE'
-                       ORDER BY W_STADKU_OD)
-                 WHERE ROWNUM <= 3
-                 UNION
-                 SELECT *
-                 FROM (SELECT PSEUDO
-                       FROM KOCURY
-                              JOIN BANDY USING (NR_BANDY)
-                       WHERE NAZWA = 'LACIACI MYSLIWI'
-                       ORDER BY W_STADKU_OD)
-                 WHERE ROWNUM <= 3)
+WHERE PSEUDO IN (SELECT PSEUDO
+                 FROM ((SELECT PSEUDO, DENSE_RANK() OVER (ORDER BY W_STADKU_OD) "rank"
+                        FROM KOCURY
+                               JOIN BANDY USING (NR_BANDY)
+                        WHERE NAZWA = 'CZARNI RYCERZE')
+                       UNION
+                       (SELECT PSEUDO, DENSE_RANK() OVER (ORDER BY W_STADKU_OD) "rank"
+                        FROM KOCURY
+                               JOIN BANDY USING (NR_BANDY)
+                        WHERE NAZWA = 'LACIACI MYSLIWI'))
+                 WHERE "rank" <= 3)
+
 ORDER BY NR_BANDY, W_STADKU_OD;
 
 UPDATE KOCURY K1
@@ -357,39 +345,31 @@ SET PRZYDZIAL_MYSZY = CASE
     MYSZY_EXTRA     = NVL(MYSZY_EXTRA, 0) + 0.15 * (SELECT AVG(NVL(MYSZY_EXTRA, 0))
                                                     FROM KOCURY
                                                     WHERE K1.NR_BANDY = KOCURY.NR_BANDY)
-WHERE PSEUDO IN (SELECT *
-                 FROM (SELECT KOCURY.PSEUDO
-                       FROM KOCURY
-                              JOIN BANDY USING (NR_BANDY)
-                       WHERE NAZWA = 'CZARNI RYCERZE'
-                       ORDER BY W_STADKU_OD)
-                 WHERE ROWNUM <= 3
-                 UNION
-                 SELECT *
-                 FROM (SELECT PSEUDO
-                       FROM KOCURY
-                              JOIN BANDY USING (NR_BANDY)
-                       WHERE NAZWA = 'LACIACI MYSLIWI'
-                       ORDER BY W_STADKU_OD)
-                 WHERE ROWNUM <= 3);
+WHERE PSEUDO IN (SELECT PSEUDO
+                 FROM ((SELECT PSEUDO, DENSE_RANK() OVER (ORDER BY W_STADKU_OD) "rank"
+                        FROM KOCURY
+                               JOIN BANDY USING (NR_BANDY)
+                        WHERE NAZWA = 'CZARNI RYCERZE')
+                       UNION
+                       (SELECT PSEUDO, DENSE_RANK() OVER (ORDER BY W_STADKU_OD) "rank"
+                        FROM KOCURY
+                               JOIN BANDY USING (NR_BANDY)
+                        WHERE NAZWA = 'LACIACI MYSLIWI'))
+                 WHERE "rank" <= 3);
 
 SELECT PSEUDO "Pseudonim", PLEC, PRZYDZIAL_MYSZY "Myszy po podw.", MYSZY_EXTRA "Extra po podw."
 FROM KOCURY
-WHERE PSEUDO IN (SELECT *
-                 FROM (SELECT PSEUDO
-                       FROM KOCURY
-                              JOIN BANDY USING (NR_BANDY)
-                       WHERE NAZWA = 'CZARNI RYCERZE'
-                       ORDER BY W_STADKU_OD)
-                 WHERE ROWNUM <= 3
-                 UNION ALL
-                 SELECT *
-                 FROM (SELECT PSEUDO
-                       FROM KOCURY
-                              JOIN BANDY USING (NR_BANDY)
-                       WHERE NAZWA = 'LACIACI MYSLIWI'
-                       ORDER BY W_STADKU_OD)
-                 WHERE ROWNUM <= 3)
+WHERE PSEUDO IN (SELECT PSEUDO
+                 FROM ((SELECT PSEUDO, DENSE_RANK() OVER (ORDER BY W_STADKU_OD) "rank"
+                        FROM KOCURY
+                               JOIN BANDY USING (NR_BANDY)
+                        WHERE NAZWA = 'CZARNI RYCERZE')
+                       UNION
+                       (SELECT PSEUDO, DENSE_RANK() OVER (ORDER BY W_STADKU_OD) "rank"
+                        FROM KOCURY
+                               JOIN BANDY USING (NR_BANDY)
+                        WHERE NAZWA = 'LACIACI MYSLIWI'))
+                 WHERE "rank" <= 3)
 ORDER BY NR_BANDY, W_STADKU_OD;
 ROLLBACK;
 
@@ -443,61 +423,51 @@ FROM (SELECT NAZWA,
 SELECT DECODE("PLEC", 'Kocor', ' ', "NAZWA BANDY") "NAZWA BANDY",
        "PLEC",
        "ILE",
-       "SZEFUNIO",
-       "BANDZIOR",
-       "LOWCZY",
-       "LAPACZ",
-       "KOT",
-       "MILUSIA",
-       "DZIELCZY",
+       NVL("SZEFUNIO", 0)                          "SZEFUNIO",
+       NVL("BANDZIOR", 0)                          "BANDZIOR",
+       NVL("LOWCZY", 0)                            "LOWCZY",
+       NVL("LAPACZ", 0)                            "LAPACZ",
+       NVL("KOT", 0)                               "KOT",
+       NVL("MILUSIA", 0)                           "MILUSIA",
+       NVL("DZIELCZY", 0)                          "DZIELCZY",
        "SUMA"
-FROM (SELECT TO_CHAR("NAZWA BANDY")     "NAZWA BANDY",
-             TO_CHAR("PLEC")            "PLEC",
-             TO_CHAR("ILE")             "ILE",
-             TO_CHAR(NVL("SZEFUNIO", 0))"SZEFUNIO",
-             TO_CHAR(NVL("BANDZIOR", 0))"BANDZIOR",
-             TO_CHAR(NVL("LOWCZY", 0))"LOWCZY",
-             TO_CHAR(NVL("LAPACZ", 0))"LAPACZ",
-             TO_CHAR(NVL("KOT", 0))"KOT",
-             TO_CHAR(NVL("MILUSIA", 0))"MILUSIA",
-             TO_CHAR(NVL("DZIELCZY", 0))"DZIELCZY",
-             TO_CHAR(NVL("SUMA", 0))"SUMA"
-      FROM (SELECT NAZWA                                                   "NAZWA BANDY",
-                   DECODE(PLEC, 'D', 'Kotka', 'Kocor')                     "PLEC",
-                   (SELECT COUNT(*) FROM KOCURY K2 WHERE K2.NR_BANDY = B.NR_BANDY
-                                                     AND K2.PLEC = K.PLEC) "ILE",
-                   NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)           "myszy_calk",
-                   FUNKCJA,
-                   (SELECT SUM(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0))
-                    FROM KOCURY K2
-                    WHERE K2.NR_BANDY = K.NR_BANDY
-                    GROUP BY K2.NR_BANDY)                                  "SUMA"
-            FROM KOCURY K
-                   JOIN BANDY B on K.NR_BANDY = B.NR_BANDY)
-          PIVOT (
-            SUM("myszy_calk")
-          FOR FUNKCJA
-          IN ('SZEFUNIO' "SZEFUNIO", 'BANDZIOR' "BANDZIOR", 'LOWCZY' "LOWCZY", 'LAPACZ' "LAPACZ", 'KOT' "KOT", 'MILUSIA' "MILUSIA", 'DZIELCZY' "DZIELCZY")
-          )
+FROM ((SELECT *
+       FROM (SELECT NAZWA                                                            "NAZWA BANDY",
+                    DECODE(PLEC, 'D', 'Kotka', 'Kocor')                              "PLEC",
+                    TO_CHAR((SELECT COUNT(*) FROM KOCURY K2 WHERE K2.NR_BANDY = B.NR_BANDY
+                                                              AND K2.PLEC = K.PLEC)) "ILE",
+                    NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)                    "myszy_calk",
+                    FUNKCJA,
+                    TO_CHAR((SELECT SUM(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0))
+                             FROM KOCURY K2
+                             WHERE K2.NR_BANDY = K.NR_BANDY
+                             GROUP BY K2.NR_BANDY))                                  "SUMA"
+             FROM KOCURY K
+                    JOIN BANDY B on K.NR_BANDY = B.NR_BANDY)
+           PIVOT (
+             MIN(TO_CHAR("myszy_calk"))
+           FOR FUNKCJA
+           IN ('SZEFUNIO' "SZEFUNIO", 'BANDZIOR' "BANDZIOR", 'LOWCZY' "LOWCZY", 'LAPACZ' "LAPACZ", 'KOT' "KOT", 'MILUSIA' "MILUSIA", 'DZIELCZY' "DZIELCZY")
+           ))
       UNION
-      SELECT 'Z-----------', '-----', '-----', '-----', '-----', '-----', '-----', '-----', '-----', '-----', '-----'
-      FROM dual
+      (SELECT 'Z-----------', '-----', '-----', '-----', '-----', '-----', '-----', '-----', '-----', '-----', '-----'
+       FROM dual)
       UNION
-      SELECT 'ZJADA RAZEM',
-             ' ',
-             ' ',
-             TO_CHAR("SZEFUNIO"),
-             TO_CHAR("BANDZIOR"),
-             TO_CHAR("LOWCZY"),
-             TO_CHAR("LAPACZ"),
-             TO_CHAR("KOT"),
-             TO_CHAR("MILUSIA"),
-             TO_CHAR("DZIELCZY"),
-             TO_CHAR((SELECT SUM(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) FROM KOCURY)) "suma"
-      FROM (SELECT FUNKCJA, NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0) "myszy_calk" FROM KOCURY)
-          PIVOT (
-            SUM("myszy_calk")
-          FOR FUNKCJA
-          IN ('SZEFUNIO' "SZEFUNIO", 'BANDZIOR' "BANDZIOR", 'LOWCZY' "LOWCZY", 'LAPACZ' "LAPACZ", 'KOT' "KOT", 'MILUSIA' "MILUSIA", 'DZIELCZY' "DZIELCZY")
-          )
+      (SELECT 'ZJADA RAZEM',
+              ' ',
+              ' ',
+              TO_CHAR("SZEFUNIO"),
+              TO_CHAR("BANDZIOR"),
+              TO_CHAR("LOWCZY"),
+              TO_CHAR("LAPACZ"),
+              TO_CHAR("KOT"),
+              TO_CHAR("MILUSIA"),
+              TO_CHAR("DZIELCZY"),
+              TO_CHAR((SELECT SUM(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) FROM KOCURY)) "suma"
+       FROM (SELECT FUNKCJA, NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0) "myszy_calk" FROM KOCURY)
+           PIVOT (
+             SUM("myszy_calk")
+           FOR FUNKCJA
+           IN ('SZEFUNIO' "SZEFUNIO", 'BANDZIOR' "BANDZIOR", 'LOWCZY' "LOWCZY", 'LAPACZ' "LAPACZ", 'KOT' "KOT", 'MILUSIA' "MILUSIA", 'DZIELCZY' "DZIELCZY")
+           ))
       ORDER BY 1, 2 DESC);
