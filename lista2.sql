@@ -396,7 +396,48 @@ ROLLBACK;
 -- Zad. 33. Napisać zapytanie, w ramach którego obliczone zostaną sumy całkowitego spożycia myszy przez koty sprawujące każdą z funkcji z podziałem na bandy i płcie kotów.
 -- Podsumować przydziały dla każdej z funkcji.
 -- Zadanie wykonać na dwa sposoby:
--- TODO a. z wykorzystaniem tzw. raportu macierzowego,
+-- a. z wykorzystaniem tzw. raportu macierzowego,
+SELECT DECODE("PLEC", 'KOCOR', ' ', NAZWA) "NAZWA BANDY",
+       "PLEC",
+       "ILE",
+       "BANDZIOR",
+       "LOWCZY",
+       "LAPACZ",
+       "KOT",
+       "MILUSIA",
+       "DZIELCZY",
+       "SUMA"
+FROM (SELECT NAZWA,
+             DECODE(PLEC, 'M', 'KOCOR', 'KOTKA')                                                           "PLEC",
+             TO_CHAR(COUNT(*))                                                                             "ILE",
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'SZEFUNIO', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0))) "SZEFUNIO",
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'BANDZIOR', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0))) "BANDZIOR",
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'LOWCZY', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0)))   "LOWCZY",
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'LAPACZ', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0)))   "LAPACZ",
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'KOT', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0)))      "KOT",
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'MILUSIA', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0)))  "MILUSIA",
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'DZIELCZY', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0))) "DZIELCZY",
+             TO_CHAR(SUM(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)))                                   "SUMA"
+      FROM KOCURY K
+             JOIN BANDY B ON K.NR_BANDY = B.NR_BANDY
+      GROUP BY NAZWA, PLEC
+      UNION
+      SELECT 'Z-----------', '-----', '-----', '-----', '-----', '-----', '-----', '-----', '-----', '-----', '-----'
+      FROM dual
+      UNION
+      SELECT 'ZJADA RAZEM',
+             ' ',
+             ' ',
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'SZEFUNIO', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0))),
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'BANDZIOR', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0))),
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'LOWCZY', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0))),
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'LAPACZ', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0))),
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'KOT', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0))),
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'MILUSIA', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0))),
+             TO_CHAR(SUM(DECODE(FUNKCJA, 'DZIELCZY', (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)), 0))),
+             TO_CHAR(SUM(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)))
+      FROM KOCURY K
+      ORDER BY 1, 2 DESC);
 
 -- b. z wykorzystaniem klauzuli PIVOT
 SELECT DECODE("PLEC", 'Kocor', ' ', "NAZWA BANDY") "NAZWA BANDY",
@@ -439,21 +480,11 @@ FROM (SELECT TO_CHAR("NAZWA BANDY")     "NAZWA BANDY",
           IN ('SZEFUNIO' "SZEFUNIO", 'BANDZIOR' "BANDZIOR", 'LOWCZY' "LOWCZY", 'LAPACZ' "LAPACZ", 'KOT' "KOT", 'MILUSIA' "MILUSIA", 'DZIELCZY' "DZIELCZY")
           )
       UNION
-      SELECT 'Z-----------' "NAZWA BANDY",
-             '-----'        "PLEC",
-             '-----',
-             '-----',
-             '-----',
-             '-----',
-             '-----',
-             '-----',
-             '-----',
-             '-----',
-             '-----'
+      SELECT 'Z-----------', '-----', '-----', '-----', '-----', '-----', '-----', '-----', '-----', '-----', '-----'
       FROM dual
       UNION
-      SELECT 'ZJADA RAZEM' "NAZWA BANDY",
-             ' '           "PLEC",
+      SELECT 'ZJADA RAZEM',
+             ' ',
              ' ',
              TO_CHAR("SZEFUNIO"),
              TO_CHAR("BANDZIOR"),
@@ -462,14 +493,11 @@ FROM (SELECT TO_CHAR("NAZWA BANDY")     "NAZWA BANDY",
              TO_CHAR("KOT"),
              TO_CHAR("MILUSIA"),
              TO_CHAR("DZIELCZY"),
-             TO_CHAR("suma")
-      FROM (SELECT FUNKCJA,
-                   NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)                           "myszy_calk",
-                   (SELECT SUM(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) FROM KOCURY) "suma"
-            FROM KOCURY)
+             TO_CHAR((SELECT SUM(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) FROM KOCURY)) "suma"
+      FROM (SELECT FUNKCJA, NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0) "myszy_calk" FROM KOCURY)
           PIVOT (
             SUM("myszy_calk")
           FOR FUNKCJA
           IN ('SZEFUNIO' "SZEFUNIO", 'BANDZIOR' "BANDZIOR", 'LOWCZY' "LOWCZY", 'LAPACZ' "LAPACZ", 'KOT' "KOT", 'MILUSIA' "MILUSIA", 'DZIELCZY' "DZIELCZY")
           )
-      ORDER BY "NAZWA BANDY", "PLEC" DESC);
+      ORDER BY 1, 2 DESC);
