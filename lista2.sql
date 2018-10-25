@@ -30,7 +30,15 @@ FROM KOCURY K1
        LEFT JOIN KOCURY K4 ON K3.SZEF = K4.PSEUDO
 WHERE K1.FUNKCJA IN ('KOT', 'MILUSIA');
 
--- TODO b. z wykorzystaniem drzewa, operatora CONNECT_BY_ROOT i tabel przestawnych,
+-- b. z wykorzystaniem drzewa, operatora CONNECT_BY_ROOT i tabel przestawnych,
+SELECT *
+FROM (SELECT CONNECT_BY_ROOT IMIE "Imie", CONNECT_BY_ROOT FUNKCJA "Funkcja", IMIE "szefunio", LEVEL "lvl"
+      FROM KOCURY
+      CONNECT BY PSEUDO = PRIOR SZEF
+      START WITH FUNKCJA IN ('KOT', 'MILUSIA'))
+    PIVOT (MAX("szefunio")
+    FOR "lvl"
+    IN (2 "Szef 1", 3 "Szef 2", 4 "Szef 3"));
 
 -- c. z wykorzystaniem drzewa i funkcji SYS_CONNECT_BY_PATH i operatora CONNECT_BY_ROOT.
 SELECT IMIE, FUNKCJA, "Imiona kolejnych szefow"
@@ -390,4 +398,78 @@ ROLLBACK;
 -- Zadanie wykonać na dwa sposoby:
 -- TODO a. z wykorzystaniem tzw. raportu macierzowego,
 
--- TODO b. z wykorzystaniem klauzuli PIVOT
+-- b. z wykorzystaniem klauzuli PIVOT
+SELECT DECODE("PLEC", 'Kocor', ' ', "NAZWA BANDY") "NAZWA BANDY",
+       "PLEC",
+       "ILE",
+       "SZEFUNIO",
+       "BANDZIOR",
+       "LOWCZY",
+       "LAPACZ",
+       "KOT",
+       "MILUSIA",
+       "DZIELCZY",
+       "SUMA"
+FROM (SELECT TO_CHAR("NAZWA BANDY")     "NAZWA BANDY",
+             TO_CHAR("PLEC")            "PLEC",
+             TO_CHAR("ILE")             "ILE",
+             TO_CHAR(NVL("SZEFUNIO", 0))"SZEFUNIO",
+             TO_CHAR(NVL("BANDZIOR", 0))"BANDZIOR",
+             TO_CHAR(NVL("LOWCZY", 0))"LOWCZY",
+             TO_CHAR(NVL("LAPACZ", 0))"LAPACZ",
+             TO_CHAR(NVL("KOT", 0))"KOT",
+             TO_CHAR(NVL("MILUSIA", 0))"MILUSIA",
+             TO_CHAR(NVL("DZIELCZY", 0))"DZIELCZY",
+             TO_CHAR(NVL("SUMA", 0))"SUMA"
+      FROM (SELECT NAZWA                                                   "NAZWA BANDY",
+                   DECODE(PLEC, 'D', 'Kotka', 'Kocor')                     "PLEC",
+                   (SELECT COUNT(*) FROM KOCURY K2 WHERE K2.NR_BANDY = B.NR_BANDY
+                                                     AND K2.PLEC = K.PLEC) "ILE",
+                   NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)           "myszy_calk",
+                   FUNKCJA,
+                   (SELECT SUM(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0))
+                    FROM KOCURY K2
+                    WHERE K2.NR_BANDY = K.NR_BANDY
+                    GROUP BY K2.NR_BANDY)                                  "SUMA"
+            FROM KOCURY K
+                   JOIN BANDY B on K.NR_BANDY = B.NR_BANDY)
+          PIVOT (
+            SUM("myszy_calk")
+          FOR FUNKCJA
+          IN ('SZEFUNIO' "SZEFUNIO", 'BANDZIOR' "BANDZIOR", 'LOWCZY' "LOWCZY", 'LAPACZ' "LAPACZ", 'KOT' "KOT", 'MILUSIA' "MILUSIA", 'DZIELCZY' "DZIELCZY")
+          )
+      UNION
+      SELECT 'Z-----------' "NAZWA BANDY",
+             '-----'        "PLEC",
+             '-----',
+             '-----',
+             '-----',
+             '-----',
+             '-----',
+             '-----',
+             '-----',
+             '-----',
+             '-----'
+      FROM dual
+      UNION
+      SELECT 'ZJADA RAZEM' "NAZWA BANDY",
+             ' '           "PLEC",
+             ' ',
+             TO_CHAR("SZEFUNIO"),
+             TO_CHAR("BANDZIOR"),
+             TO_CHAR("LOWCZY"),
+             TO_CHAR("LAPACZ"),
+             TO_CHAR("KOT"),
+             TO_CHAR("MILUSIA"),
+             TO_CHAR("DZIELCZY"),
+             TO_CHAR("suma")
+      FROM (SELECT FUNKCJA,
+                   NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)                           "myszy_calk",
+                   (SELECT SUM(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) FROM KOCURY) "suma"
+            FROM KOCURY)
+          PIVOT (
+            SUM("myszy_calk")
+          FOR FUNKCJA
+          IN ('SZEFUNIO' "SZEFUNIO", 'BANDZIOR' "BANDZIOR", 'LOWCZY' "LOWCZY", 'LAPACZ' "LAPACZ", 'KOT' "KOT", 'MILUSIA' "MILUSIA", 'DZIELCZY' "DZIELCZY")
+          )
+      ORDER BY "NAZWA BANDY", "PLEC" DESC);
