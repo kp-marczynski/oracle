@@ -152,12 +152,65 @@ begin
   end if;
 end;
 
--- todo Zad. 39. Napisać blok PL/SQL wczytujący trzy parametry reprezentujące nr bandy, nazwę bandy oraz teren polowań.
+-- Zad. 39. Napisać blok PL/SQL wczytujący trzy parametry reprezentujące nr bandy, nazwę bandy oraz teren polowań.
 -- Skrypt ma uniemożliwiać wprowadzenie istniejących już wartości parametrów poprzez obsługę odpowiednich wyjątków.
 -- Sytuacją wyjątkową jest także wprowadzenie numeru bandy <=0. W przypadku zaistnienia sytuacji wyjątkowej
 -- należy wyprowadzić na ekran odpowiedni komunikat. W przypadku prawidłowych parametrów należy stworzyć nową bandę w relacji Bandy.
 -- Zmianę należy na końcu wycofać.
 
+declare
+  nowy_nr     BANDY.NR_BANDY%type := &nr_bandy;
+  nowa_nazwa  BANDY.NAZWA%type := &nazwa;
+  nowy_teren  BANDY.TEREN%type := &teren;
+  elems_count NUMBER;
+  err_msg     STRING(256);
+    juz_istnieje EXCEPTION;
+    bledny_numer EXCEPTION;
+begin
+  if nowy_nr < 0
+  then
+    raise bledny_numer;
+  end if;
+  select count(NR_BANDY) into elems_count FROM BANDY where NR_BANDY = nowy_nr;
+  if elems_count > 0
+  then
+    err_msg := nowy_nr;
+  end if;
+  select count(*) into elems_count FROM BANDY where NAZWA = nowa_nazwa;
+  if elems_count > 0
+  then
+    if length(err_msg) > 0
+    then
+      err_msg := err_msg || ', ';
+    end if;
+    err_msg := err_msg || nowa_nazwa;
+  end if;
+  select count(*) into elems_count FROM BANDY where TEREN = nowy_teren;
+  if elems_count > 0
+  then
+    if length(err_msg) > 0
+    then
+      err_msg := err_msg || ', ';
+    end if;
+    err_msg := err_msg || nowy_teren;
+  end if;
+
+  if length(err_msg) > 0
+  then
+    raise juz_istnieje;
+  end if;
+  insert into BANDY (NR_BANDY, NAZWA, TEREN) values (nowy_nr, nowa_nazwa, nowy_teren);
+  dbms_output.put_line('Dodano bande: ' || nowy_nr || ', ' || nowa_nazwa || ', ' || nowy_teren);
+  rollback;
+
+  exception
+  when juz_istnieje
+  then dbms_output.put_line(err_msg || ': już istnieje');
+  when bledny_numer
+  then dbms_output.put_line('Numer bandy musi być dodatni!');
+  when others
+  then dbms_output.put_line(sqlerrm);
+end;
 
 -- todo Zad. 40. Przerobić blok z zadania 39 na procedurę umieszczoną w bazie danych.
 
