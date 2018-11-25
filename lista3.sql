@@ -256,7 +256,6 @@ create or replace procedure nowa_banda(nowy_nr    BANDY.NR_BANDY%TYPE, nowa_nazw
     end if;
     insert into BANDY (NR_BANDY, NAZWA, TEREN) values (nowy_nr, nowa_nazwa, nowy_teren);
     dbms_output.put_line('Dodano bande: ' || nowy_nr || ', ' || nowa_nazwa || ', ' || nowy_teren);
-    rollback;
 
     exception
     when juz_istnieje
@@ -272,9 +271,30 @@ begin
   rollback;
 end;
 
--- todo Zad. 41. Zdefiniować wyzwalacz, który zapewni, że numer nowej bandy będzie zawsze większy o 1 od najwyższego numeru istniejącej już bandy.
+-- Zad. 41. Zdefiniować wyzwalacz, który zapewni, że numer nowej bandy będzie zawsze większy o 1 od najwyższego numeru istniejącej już bandy.
 -- Sprawdzić działanie wyzwalacza wykorzystując procedurę z zadania 40.
 
+CREATE OR REPLACE TRIGGER automatyczny_nr_bandy
+  BEFORE INSERT
+  ON BANDY
+  FOR EACH ROW
+  DECLARE
+    max_nr BANDY.nr_bandy%TYPE := 0;
+  BEGIN
+    SELECT MAX(nr_bandy) INTO max_nr FROM BANDY;
+    :NEW.nr_bandy := max_nr + 1;
+  END;
+
+declare
+  numer_do_wstawienia NUMBER := 99;
+  wstawiony_numer     NUMBER;
+begin
+  nowa_banda(nowy_nr=>numer_do_wstawienia, nowa_nazwa=>'KOLESIE', nowy_teren=>'Wroclaw');
+  SELECT NR_BANDY into wstawiony_numer FROM BANDY where NAZWA = 'KOLESIE';
+  dbms_output.put_line(
+      'Próbowano wstawić numer: ' || numer_do_wstawienia || ', a wstawiono numer: ' || wstawiony_numer);
+  rollback;
+end;
 
 -- Zad. 42. Milusie postanowiły zadbać o swoje interesy. Wynajęły więc informatyka, aby zapuścił wirusa w system Tygrysa.
 -- Teraz przy każdej próbie zmiany przydziału myszy na plus (o minusie w ogóle nie może być mowy)
