@@ -1,15 +1,55 @@
--- todo Zad. 34. Napisać blok PL/SQL, który wybiera z relacji Kocury koty o funkcji podanej z klawiatury.
+-- Zad. 34. Napisać blok PL/SQL, który wybiera z relacji Kocury koty o funkcji podanej z klawiatury.
 -- Jedynym efektem działania bloku ma być komunikat informujący czy znaleziono, czy też nie, kota pełniącego podaną funkcję
 -- (w przypadku znalezienia kota wyświetlić nazwę odpowiedniej funkcji).
+DECLARE
+  l_kotow NUMBER;
+  fun     FUNKCJE.FUNKCJA%type := &funckja;
+BEGIN
+  SELECT count(*) into l_kotow FROM KOCURY WHERE FUNKCJA = upper(fun);
+  If l_kotow > 0
+  THEN
+    DBMS_OUTPUT.PUT_LINE('Znaleziono kota pelniacego funkcje: ' || fun);
+  ELSE
+    DBMS_OUTPUT.PUT_LINE('Nie znaleziono kota pelniacego podana funkcje.');
+  end if;
+end;
 
-
--- todo Zad. 35. Napisać blok PL/SQL, który wyprowadza na ekran następujące informacje o kocie
+-- Zad. 35. Napisać blok PL/SQL, który wyprowadza na ekran następujące informacje o kocie
 -- o pseudonimie wprowadzonym z klawiatury (w zależności od rzeczywistych danych):
 -- 'calkowity roczny przydzial myszy >700'
 -- 'styczeń jest miesiacem przystapienia do stada'
 -- 'imię zawiera litere A' 'nie odpowiada kryteriom'.
 -- Powyższe informacje wymienione są zgodnie z hierarchią ważności. Każdą wprowadzaną informację poprzedzić imieniem kota.
-
+DECLARE
+  myszy                NUMBER;
+  w_stadku             DATE;
+  imie_kota            KOCURY.IMIE%type;
+  ps                   KOCURY.PSEUDO%type := &ps;
+  nie_spelnia_warunkow BOOLEAN := true;
+BEGIN
+  SELECT (NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0)) * 12, W_STADKU_OD, IMIE  into myszy, w_stadku, imie_kota
+  FROM KOCURY
+  WHERE PSEUDO = ps;
+  IF myszy > 700
+  THEN
+    DBMS_OUTPUT.PUT_LINE(imie_kota || ': Calkowity roczny przydzial myszy >700');
+    nie_spelnia_warunkow := false;
+  end if;
+  if EXTRACT(MONTH FROM w_stadku) = 1
+  THEN
+    DBMS_OUTPUT.PUT_LINE(imie_kota || ': Styczen jest miesiacem przystapienia do stada');
+    nie_spelnia_warunkow := false;
+  end if;
+  if imie_kota like '%A%'
+  THEN
+    DBMS_OUTPUT.PUT_LINE(imie_kota || ': imię zawiera litere A');
+    nie_spelnia_warunkow := false;
+  end if;
+  if nie_spelnia_warunkow = true
+  then
+    DBMS_OUTPUT.PUT_LINE(imie_kota || ': Nie spelnia warunkow');
+  end if;
+end;
 
 -- todo Zad. 36. W związku z dużą wydajnością w łowieniu myszy SZEFUNIO postanowił wynagrodzić swoich podwładnych.
 -- Ogłosił więc, że podwyższa indywidualny przydział myszy każdego kota o 10% poczynając od kotów o najniższym przydziale.
@@ -23,8 +63,24 @@
 -- Na końcu wycofać wszystkie zmiany.
 
 
--- todo Zad. 37. Napisać blok, który powoduje wybranie w pętli kursorowej FOR pięciu kotów o najwyższym całkowitym przydziale myszy.
+-- Zad. 37. Napisać blok, który powoduje wybranie w pętli kursorowej FOR pięciu kotów o najwyższym całkowitym przydziale myszy.
 -- Wynik wyświetlić na ekranie.
+declare
+  cursor koty is select *
+                 from (select pseudo, nvl(PRZYDZIAL_MYSZY, 0) + nvl(MYSZY_EXTRA, 0) "ZJADA"
+                       from Kocury
+                       order by "ZJADA" DESC)
+                 where rownum <= 5;
+  licznik NUMBER := 1;
+begin
+  DBMS_OUTPUT.PUT_LINE('Nr  Psedonim  Zjada');
+  DBMS_OUTPUT.PUT_LINE('-------------------');
+  for kursor in koty
+  loop
+    DBMS_OUTPUT.PUT_LINE(RPAD(licznik, 4) || RPAD(kursor.PSEUDO, 10) || LPAD(kursor.ZJADA, 5));
+    licznik := licznik + 1;
+  end loop;
+end;
 
 
 -- todo Zad. 38. Napisać blok, który zrealizuje wersję a. lub wersję b. zad. 19 w sposób uniwersalny
@@ -49,7 +105,7 @@
 -- todo Zad. 42. Milusie postanowiły zadbać o swoje interesy. Wynajęły więc informatyka, aby zapuścił wirusa w system Tygrysa.
 -- Teraz przy każdej próbie zmiany przydziału myszy na plus (o minusie w ogóle nie może być mowy)
 -- o wartość mniejszą niż 10% przydziału myszy Tygrysa żal Miluś ma być utulony podwyżką ich przydziału
--- o tą wartość oraz podwyżką myszy extra o 5. Tygrys ma być ukarany stratą wspomnianych 10%.
+-- o tę wartość oraz podwyżką myszy extra o 5. Tygrys ma być ukarany stratą wspomnianych 10%.
 -- Jeśli jednak podwyżka będzie satysfakcjonująca, przydział myszy extra Tygrysa ma wzrosnąć o 5.
 -- Zaproponować dwa rozwiązania zadania, które ominą podstawowe ograniczenie dla wyzwalacza wierszowego aktywowanego
 -- poleceniem DML tzn. brak możliwości odczytu lub zmiany relacji, na której operacja (polecenie DML) „wyzwala” ten wyzwalacz.

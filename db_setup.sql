@@ -6,6 +6,7 @@ DROP TABLE Funkcje CASCADE CONSTRAINTS;
 DROP TABLE Wrogowie CASCADE CONSTRAINTS;
 DROP TABLE Kocury CASCADE CONSTRAINTS;
 DROP TABLE Wrogowie_Kocurow CASCADE CONSTRAINTS;
+-- DROP TABLE Myszy CASCADE CONSTRAINTS;
 
 CREATE TABLE Bandy (
   nr_bandy   NUMBER(2) CONSTRAINT pk_bandy PRIMARY KEY,
@@ -47,6 +48,13 @@ CREATE TABLE Wrogowie_Kocurow (
   opis_incydentu VARCHAR2(50),
   CONSTRAINT pk_wrogowiekocurow PRIMARY KEY (pseudo, imie_wroga)
 );
+
+-- CREATE TABLE Myszy (
+--   nr_myszy        VARCHAR2(15) CONSTRAINT pk_myszy PRIMARY KEY,
+--   waga_myszy      VARCHAR2(15) CONSTRAINT req_myszy NOT NULL,
+--   pseudo_zjadacza VARCHAR2(15) CONSTRAINT fk_myszy_kocury REFERENCES Kocury (pseudo),
+--   pseudo_lapacza  VARCHAR2(15) CONSTRAINT fk_myszy_kocury_2 REFERENCES Kocury (pseudo)
+-- );
 
 ALTER TABLE Bandy
   ADD CONSTRAINT fk_bandy_kocury FOREIGN KEY (szef_bandy) REFERENCES Kocury (pseudo);
