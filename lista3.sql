@@ -219,15 +219,17 @@ end;
 -- Sprawdzić działanie wyzwalacza wykorzystując procedurę z zadania 40.
 
 
--- todo Zad. 42. Milusie postanowiły zadbać o swoje interesy. Wynajęły więc informatyka, aby zapuścił wirusa w system Tygrysa.
+-- Zad. 42. Milusie postanowiły zadbać o swoje interesy. Wynajęły więc informatyka, aby zapuścił wirusa w system Tygrysa.
 -- Teraz przy każdej próbie zmiany przydziału myszy na plus (o minusie w ogóle nie może być mowy)
 -- o wartość mniejszą niż 10% przydziału myszy Tygrysa żal Miluś ma być utulony podwyżką ich przydziału
 -- o tę wartość oraz podwyżką myszy extra o 5. Tygrys ma być ukarany stratą wspomnianych 10%.
 -- Jeśli jednak podwyżka będzie satysfakcjonująca, przydział myszy extra Tygrysa ma wzrosnąć o 5.
 -- Zaproponować dwa rozwiązania zadania, które ominą podstawowe ograniczenie dla wyzwalacza wierszowego aktywowanego
 -- poleceniem DML tzn. brak możliwości odczytu lub zmiany relacji, na której operacja (polecenie DML) „wyzwala” ten wyzwalacz.
--- W pierwszym rozwiązaniu (klasycznym) wykorzystać kilku wyzwalaczy i pamięć w postaci specyfikacji dedykowanego zadaniu pakietu,
--- w drugim wykorzystać wyzwalacz COMPOUND. Podać przykład funkcjonowania wyzwalaczy a następnie zlikwidować wprowadzone przez nie zmiany.
+-- todo W pierwszym rozwiązaniu (klasycznym) wykorzystać kilku wyzwalaczy i pamięć w postaci specyfikacji dedykowanego zadaniu pakietu,
+
+
+-- todo w drugim wykorzystać wyzwalacz COMPOUND. Podać przykład funkcjonowania wyzwalaczy a następnie zlikwidować wprowadzone przez nie zmiany.
 
 
 -- todo Zad. 43. Napisać blok, który zrealizuje zad. 33 w sposób uniwersalny
