@@ -51,7 +51,7 @@ BEGIN
   end if;
 end;
 
--- todo Zad. 36. W związku z dużą wydajnością w łowieniu myszy SZEFUNIO postanowił wynagrodzić swoich podwładnych.
+-- Zad. 36. W związku z dużą wydajnością w łowieniu myszy SZEFUNIO postanowił wynagrodzić swoich podwładnych.
 -- Ogłosił więc, że podwyższa indywidualny przydział myszy każdego kota o 10% poczynając od kotów o najniższym przydziale.
 -- Jeśli w którymś momencie suma wszystkich przydziałów przekroczy 1050, żaden inny kot nie dostanie podwyżki.
 -- Jeśli przydział myszy po podwyżce przekroczy maksymalną wartość należną dla pełnionej funkcji (relacja Funkcje),
@@ -61,32 +61,96 @@ end;
 -- (liczba „obiegów podwyżkowych” może być większa od 1 a więc i podwyżka może być większa niż 10%).
 -- Wyświetlić na ekranie sumę przydziałów myszy po wykonaniu zadania wraz z liczbą podwyżek (liczbą zmian w relacji Kocury).
 -- Na końcu wycofać wszystkie zmiany.
-
+declare
+  CURSOR kursor is select PRZYDZIAL_MYSZY, MAX_MYSZY
+                   from KOCURY
+                          JOIN FUNKCJE F on KOCURY.FUNKCJA = F.FUNKCJA
+                   ORDER BY PRZYDZIAL_MYSZY for update of PRZYDZIAL_MYSZY;
+  suma_myszy     NUMBER;
+  nowy_przydzial NUMBER;
+begin
+  select sum(PRZYDZIAL_MYSZY) into suma_myszy from KOCURY;
+  DBMS_OUTPUT.PUT_LINE('Suma przydzialu myszy przed zmianami: ' || suma_myszy);
+  <<zewn>> loop
+    for rekord in kursor
+    loop
+      select sum(PRZYDZIAL_MYSZY) into suma_myszy from KOCURY;
+      if suma_myszy > 1050
+      then
+        exit zewn;
+      end if;
+      nowy_przydzial := ROUND(rekord.PRZYDZIAL_MYSZY * 1.1);
+      if nowy_przydzial > rekord.MAX_MYSZY
+      then
+        nowy_przydzial := rekord.MAX_MYSZY;
+      end if;
+      update KOCURY set PRZYDZIAL_MYSZY = nowy_przydzial;
+    end loop;
+  end loop zewn;
+  DBMS_OUTPUT.PUT_LINE('Suma przydzialu myszy po zmianach: ' || suma_myszy);
+  rollback;
+end;
 
 -- Zad. 37. Napisać blok, który powoduje wybranie w pętli kursorowej FOR pięciu kotów o najwyższym całkowitym przydziale myszy.
 -- Wynik wyświetlić na ekranie.
 declare
-  cursor koty is select *
-                 from (select pseudo, nvl(PRZYDZIAL_MYSZY, 0) + nvl(MYSZY_EXTRA, 0) "ZJADA"
-                       from Kocury
-                       order by "ZJADA" DESC)
-                 where rownum <= 5;
+  cursor kursor is select *
+                   from (select pseudo, nvl(PRZYDZIAL_MYSZY, 0) + nvl(MYSZY_EXTRA, 0) "ZJADA"
+                         from Kocury
+                         order by "ZJADA" DESC)
+                   where rownum <= 5;
   licznik NUMBER := 1;
 begin
   DBMS_OUTPUT.PUT_LINE('Nr  Psedonim  Zjada');
   DBMS_OUTPUT.PUT_LINE('-------------------');
-  for kursor in koty
+  for rekord in kursor
   loop
-    DBMS_OUTPUT.PUT_LINE(RPAD(licznik, 4) || RPAD(kursor.PSEUDO, 10) || LPAD(kursor.ZJADA, 5));
+    DBMS_OUTPUT.PUT_LINE(RPAD(licznik, 4) || RPAD(rekord.PSEUDO, 10) || LPAD(rekord.ZJADA, 5));
     licznik := licznik + 1;
   end loop;
 end;
 
 
--- todo Zad. 38. Napisać blok, który zrealizuje wersję a. lub wersję b. zad. 19 w sposób uniwersalny
+-- Zad. 38. Napisać blok, który zrealizuje wersję a. lub wersję b. zad. 19 w sposób uniwersalny
 -- (bez konieczności uwzględniania wiedzy o głębokości drzewa).
 -- Daną wejściową ma być maksymalna liczba wyświetlanych przełożonych.
 
+declare
+  l_szefow      NUMBER := &szefowie;
+  cursor kursor is select IMIE, FUNKCJA, SZEF FROM KOCURY WHERE FUNKCJA IN ('KOT', 'MILUSIA');
+  aktualny_szef KOCURY.SZEF%type := null;
+  imie_szefa    KOCURY.IMIE%type := null;
+begin
+  if l_szefow < 1
+  then
+    dbms_output.put_line('wprowadzono niepoprawna liczbe szefow: <1');
+  else
+    dbms_output.put(RPAD('IMIE', 15) || RPAD('FUNKCJA', 15));
+    for i in 1..l_szefow
+    loop
+      dbms_output.put(RPAD(('SZEF ' || i), 15));
+    end loop;
+    dbms_output.new_line();
+    dbms_output.put_line(LPAD(' ', 15 * (l_szefow + 2), '-'));
+    for rekord in kursor
+    loop
+      dbms_output.put(RPAD(rekord.IMIE, 15));
+      dbms_output.put(RPAD(rekord.FUNKCJA, 15));
+      aktualny_szef := rekord.SZEF;
+      for i in 1..l_szefow
+      loop
+        if aktualny_szef is null
+        then
+          exit;
+        else
+          select imie, szef into imie_szefa, aktualny_szef from KOCURY where PSEUDO = aktualny_szef;
+          dbms_output.put(RPAD(imie_szefa, 15));
+        end if;
+      end loop;
+      dbms_output.new_line();
+    end loop;
+  end if;
+end;
 
 -- todo Zad. 39. Napisać blok PL/SQL wczytujący trzy parametry reprezentujące nr bandy, nazwę bandy oraz teren polowań.
 -- Skrypt ma uniemożliwiać wprowadzenie istniejących już wartości parametrów poprzez obsługę odpowiednich wyjątków.
