@@ -8,6 +8,12 @@ DROP TABLE Kocury CASCADE CONSTRAINTS;
 DROP TABLE Wrogowie_Kocurow CASCADE CONSTRAINTS;
 -- DROP TABLE Myszy CASCADE CONSTRAINTS;
 
+BEGIN
+  FOR i in (select trigger_name from user_triggers) LOOP
+    EXECUTE IMMEDIATE 'DROP TRIGGER ' || i.trigger_name;
+  END LOOP;
+END;
+
 CREATE TABLE Bandy (
   nr_bandy   NUMBER(2) CONSTRAINT pk_bandy PRIMARY KEY,
   nazwa      VARCHAR2(20) CONSTRAINT req_bandy NOT NULL,
