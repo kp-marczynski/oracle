@@ -516,7 +516,7 @@ end;
 -- a następnie wykorzystać ją do określenia podatku dla wszystkich kotów.
 
 
--- todo Zad. 45. Tygrys zauważył dziwne zmiany wartości swojego prywatnego przydziału myszy (patrz zadanie 42).
+-- Zad. 45. Tygrys zauważył dziwne zmiany wartości swojego prywatnego przydziału myszy (patrz zadanie 42).
 -- Nie niepokoiły go zmiany na plus ale te na minus były, jego zdaniem, niedopuszczalne.
 -- Zmotywował więc jednego ze swoich szpiegów do działania i dzięki temu odkrył niecne praktyki Miluś (zadanie 42).
 -- Polecił więc swojemu informatykowi skonstruowanie mechanizmu zapisującego w relacji Dodatki_extra (patrz Wykłady - cz. 2)
@@ -524,7 +524,121 @@ end;
 -- wykonanej przez innego operatora niż on sam. Zaproponować taki mechanizm, w zastępstwie za informatyka Tygrysa.
 -- W rozwiązaniu wykorzystać funkcję LOGIN_USER zwracającą nazwę użytkownika aktywującego wyzwalacz oraz elementy dynamicznego SQL'a.
 
+CREATE OR REPLACE TRIGGER kara_dla_milus
+  BEFORE UPDATE OF PRZYDZIAL_MYSZY
+  ON KOCURY
+  FOR EACH ROW
+  DECLARE
+    log VARCHAR2(255) := LOGIN_USER;
+    fun KOCURY.FUNKCJA%TYPE;
+    ps  KOCURY.PSEUDO%TYPE;
+    pm  KOCURY.PRZYDZIAL_MYSZY%TYPE;
+    PRAGMA AUTONOMOUS_TRANSACTION;
+  BEGIN
+    IF UPDATING ('funkcja')
+    THEN
+      fun := :NEW.FUNKCJA;
+    ELSE
+      fun := :OLD.FUNKCJA;
+    END IF;
+    IF UPDATING ('pseudo')
+    THEN
+      ps := :NEW.PSEUDO;
+    ELSE
+      ps := :OLD.PSEUDO;
+    END IF;
+    pm := :NEW.PRZYDZIAL_MYSZY - :OLD.PRZYDZIAL_MYSZY;
+    IF fun = 'MILUSIA' AND log <> 'TYGRYS' AND pm > 0
+    THEN
+      EXECUTE IMMEDIATE 'INSERT INTO DODATKI_EXTRA(PSEUDO,DOD_EXTRA) VALUES (''' || ps || ''',-10)';
+      EXECUTE IMMEDIATE 'COMMIT';
+    END IF;
+  END;
 
--- todo Zad. 46. Napisać wyzwalacz, który uniemożliwi wpisanie kotu przydziału myszy spoza przedziału (min_myszy, max_myszy)
+BEGIN
+  UPDATE KOCURY
+  SET PRZYDZIAL_MYSZY = 34
+  WHERE FUNKCJA = 'MILUSIA';
+  ROLLBACK;
+END;
+SELECT * FROM DODATKI_EXTRA;
+
+
+-- Zad. 46. Napisać wyzwalacz, który uniemożliwi wpisanie kotu przydziału myszy spoza przedziału (min_myszy, max_myszy)
 -- określonego dla każdej funkcji w relacji Funkcje. Każda próba wykroczenia poza obowiązujący przedział
 -- ma być dodatkowo monitorowana w osobnej relacji (kto, kiedy, jakiemu kotu, jaką operacją).
+
+CREATE OR REPLACE TRIGGER co_z_myszkami
+  BEFORE INSERT OR UPDATE OF przydzial_myszy, FUNKCJA
+  ON Kocury
+  FOR EACH ROW
+  DECLARE
+    ps          Kocury.pseudo%TYPE;
+    pm          Kocury.przydzial_myszy%TYPE;
+    f           Kocury.funkcja%TYPE;
+    op          VARCHAR2(255);
+    wykroczenie BOOLEAN;
+    PROCEDURE sprawdz_wykroczenie IS
+      log   VARCHAR2(255) := LOGIN_USER;
+      max_m Funkcje.MAX_MYSZY%TYPE;
+      min_m Funkcje.MIN_MYSZY%TYPE;
+      PRAGMA AUTONOMOUS_TRANSACTION;
+      BEGIN
+        SELECT
+          MIN_MYSZY,
+          MAX_MYSZY
+        INTO min_m, max_m
+        FROM FUNKCJE
+        WHERE FUNKCJE.FUNKCJA = f;
+        IF pm > max_m OR pm < min_m
+        THEN
+          INSERT INTO HISTORIA_WYKROCZEN (LOGIN, DATA_WYKROCZENIA, PSEUDO, OPERACJA)
+          VALUES (log, SYSDATE, ps, op || '(' || min_m || ':' || max_m || ') -> ' || pm);
+          COMMIT;
+          wykroczenie := TRUE;
+        ELSE
+          wykroczenie := FALSE;
+        END IF;
+      END;
+
+  BEGIN
+    IF INSERTING
+    THEN ps := :NEW.pseudo;
+      pm := :NEW.przydzial_myszy;
+      f := :NEW.FUNKCJA;
+      op := 'inserting';
+      sprawdz_wykroczenie();
+      IF wykroczenie = TRUE
+      THEN
+        RAISE_APPLICATION_ERROR(-20105, 'Nowy przydzial myszy nie miesci sie w przedziale dla funkcji!');
+      END IF;
+    ELSE
+      ps := :OLD.pseudo;
+      f := :OLD.FUNKCJA;
+    END IF;
+    IF UPDATING ('przydzial_myszy')
+    THEN pm := :NEW.przydzial_myszy;
+      op := 'updating przydzial';
+      sprawdz_wykroczenie();
+      IF wykroczenie = TRUE
+      THEN
+        :New.PRZYDZIAL_MYSZY := :OLD.PRZYDZIAL_MYSZY;
+      END IF;
+    END IF;
+    IF UPDATING ('funkcja')
+    THEN f := :NEW.FUNKCJA;
+      op := 'updating funkcja';
+      sprawdz_wykroczenie();
+      IF wykroczenie = TRUE
+      THEN
+        :New.PRZYDZIAL_MYSZY := :OLD.PRZYDZIAL_MYSZY;
+      END IF;
+    END IF;
+  END;
+
+UPDATE KOCURY
+SET PRZYDZIAL_MYSZY = 104;
+SELECT *
+FROM KOCURY;
+SELECT *
+FROM HISTORIA_WYKROCZEN;
