@@ -305,134 +305,92 @@ drop trigger automatyczny_nr_bandy;
 -- Zaproponować dwa rozwiązania zadania, które ominą podstawowe ograniczenie dla wyzwalacza wierszowego aktywowanego
 -- poleceniem DML tzn. brak możliwości odczytu lub zmiany relacji, na której operacja (polecenie DML) „wyzwala” ten wyzwalacz.
 -- Podać przykład funkcjonowania wyzwalaczy a następnie zlikwidować wprowadzone przez nie zmiany.
--- todo W pierwszym rozwiązaniu (klasycznym) wykorzystać kilku wyzwalaczy i pamięć w postaci specyfikacji dedykowanego zadaniu pakietu,
--- CREATE OR REPLACE PACKAGE wirus
--- AS
---   przydzial_tygrys NUMBER :=0;
---   myszy_extra_tygrys NUMBER :=0;
---   kara BOOLEAN :=false;
--- end wirus;
--- CREATE OR REPLACE TRIGGER przydzial_tygrys_before
---   BEFORE UPDATE
---   ON KOCURY
---   BEGIN
---     SELECT PRZYDZIAL_MYSZY, MYSZY_EXTRA into wirus.przydzial_tygrys, wirus.myszy_extra_tygrys FROM KOCURY WHERE PSEUDO = 'TYGRYS';
---   end;
--- CREATE OR REPLACE TRIGGER podwyzka_milus_before
---   BEFORE UPDATE
---   ON KOCURY
---   FOR EACH ROW
---   WHEN (FUNKCJA = 'MILUSIA')
---   BEGIN
--- --     if true
--- --     then
--- --       wirus.kara := true;
--- --       dbms_output.put_line('Tygrys musi zostać ukarany!');
--- -- --       :new.PRZYDZIAL_MYSZY :=  wirus.przydzial_tygrys;
--- -- --       :new.MYSZY_EXTRA := :old.MYSZY_EXTRA ;
--- --       else
--- --         wirus.kara := false;
--- --         dbms_output.put_line('Tygrys zostanie nagrodzony!');
--- --     end if;
---   end;
+-- W pierwszym rozwiązaniu (klasycznym) wykorzystać kilku wyzwalaczy i pamięć w postaci specyfikacji dedykowanego zadaniu pakietu,
 
-/*CREATE OR REPLACE PACKAGE Zad42 AS
-  przydzial NUMBER DEFAULT 0;
-  kara NUMBER DEFAULT 0;
-  nagroda NUMBER DEFAULT 0;
-END Zad42;
+CREATE OR REPLACE PACKAGE wirus
+AS
+  przydzial_tygrysa Kocury.PRZYDZIAL_MYSZY%TYPE;
+  biezaca_strata_tygrysa Kocury.PRZYDZIAL_MYSZY%TYPE;
+  strata_tygrysa Kocury.PRZYDZIAL_MYSZY%TYPE;
+  roznica_przydzialu Kocury.PRZYDZIAL_MYSZY%TYPE;
+  nagroda_tygrysa Kocury.MYSZY_EXTRA%TYPE;
+  myszy_extra_tygrysa Kocury.MYSZY_EXTRA%TYPE;
+END wirus;
 
-CREATE OR REPLACE TRIGGER Zad42_BeforeUpdate
-  BEFORE UPDATE
-  ON kocury
+CREATE OR REPLACE TRIGGER zad42_before_trigger
+  BEFORE UPDATE OF PRZYDZIAL_MYSZY
+  ON KOCURY
   BEGIN
-    SELECT przydzial_myszy INTO Zad42.przydzial FROM Kocury WHERE pseudo = 'TYGRYS';
+    SELECT
+      PRZYDZIAL_MYSZY,
+      MYSZY_EXTRA
+    INTO wirus.przydzial_tygrysa, wirus.myszy_extra_tygrysa
+    FROM KOCURY
+    WHERE PSEUDO = 'TYGRYS';
+    wirus.strata_tygrysa := 0;
+    wirus.nagroda_tygrysa := 0;
+    wirus.biezaca_strata_tygrysa := 0;
   END;
 
-CREATE OR REPLACE TRIGGER Zad42_BeforeUpdateEachRow
-  BEFORE UPDATE
-  ON Kocury
+CREATE OR REPLACE TRIGGER zad42_before_each_trigger
+  BEFORE UPDATE OF PRZYDZIAL_MYSZY
+  ON KOCURY
   FOR EACH ROW
-  DECLARE
-    f_min NUMBER DEFAULT 0;
-    f_max NUMBER DEFAULT 0;
-    diff  NUMBER DEFAULT 0;
   BEGIN
-    SELECT min_myszy, max_myszy INTO f_min, f_max FROM Funkcje WHERE funkcja = :new.funkcja;
-
-    IF :new.funkcja = 'MILUSIA'
+    IF :NEW.PSEUDO = 'TYGRYS'
     THEN
-      IF :new.przydzial_myszy < :old.przydzial_myszy
+      wirus.przydzial_tygrysa := :NEW.PRZYDZIAL_MYSZY - wirus.strata_tygrysa;
+      :NEW.PRZYDZIAL_MYSZY := wirus.przydzial_tygrysa;
+      wirus.strata_tygrysa := 0;
+      wirus.biezaca_strata_tygrysa := 0;
+      :NEW.MYSZY_EXTRA := :NEW.MYSZY_EXTRA + wirus.nagroda_tygrysa;
+      wirus.nagroda_tygrysa := 0;
+      dbms_output.put_line('Przydzial tygrysa zmienil sie z: ' || :OLD.PRZYDZIAL_MYSZY);
+      dbms_output.put_line('Przydzial tygrysa zmienil sie na: ' || wirus.przydzial_tygrysa);
+    ELSIF :NEW.FUNKCJA = 'MILUSIA'
       THEN
-        :new.przydzial_myszy := :old.przydzial_myszy;
-        DBMS_OUTPUT.PUT_LINE('Zablokowano probe obnizki kota ' || :new.pseudo
-                             || ' z ' || :old.przydzial_myszy || ' na ' || :new.przydzial_myszy);
-      END IF;
-
-      diff := :new.przydzial_myszy - :old.przydzial_myszy;
-
-      IF (diff > 0) AND (diff < 0.1 * Zad42.przydzial)
-      THEN
-
-        DBMS_OUTPUT.PUT_LINE('Kara dla Tygrysa za zmiane dla kota ' || :new.pseudo
-                             || ' z ' || :old.przydzial_myszy || ' na ' || :new.przydzial_myszy);
-
-
-        Zad42.kara := Zad42.kara + 1;
-        :new.przydzial_myszy := :new.przydzial_myszy + 0.1 * Zad42.przydzial;
-        :new.myszy_extra := :new.myszy_extra + 5;
-      ELSIF (diff > 0) AND (diff >= 0.1 * Zad42.przydzial)
+        wirus.roznica_przydzialu := :NEW.PRZYDZIAL_MYSZY - :OLD.PRZYDZIAL_MYSZY;
+        IF wirus.roznica_przydzialu < 0
         THEN
+          :NEW.PRZYDZIAL_MYSZY := :OLD.PRZYDZIAL_MYSZY;
+        END IF;
+        IF wirus.roznica_przydzialu > 0
+        THEN
+          IF wirus.roznica_przydzialu < 0.1 * wirus.przydzial_tygrysa
+          THEN
+            wirus.biezaca_strata_tygrysa := ROUND(0.1 * (wirus.przydzial_tygrysa - wirus.strata_tygrysa));
+            :NEW.PRZYDZIAL_MYSZY := :OLD.PRZYDZIAL_MYSZY + wirus.biezaca_strata_tygrysa;
+            wirus.strata_tygrysa := wirus.strata_tygrysa + wirus.biezaca_strata_tygrysa;
+            dbms_output.put_line('Strata tygrysa zwiekszyla sie do: ' || wirus.strata_tygrysa);
 
-          DBMS_OUTPUT.PUT_LINE('Nagroda dla Tygrysa za zmiane dla kota ' || :new.pseudo
-                               || ' z ' || :old.przydzial_myszy || ' na ' || :new.przydzial_myszy);
-
-
-          Zad42.nagroda := Zad42.nagroda + 1;
-      END IF;
+            :NEW.MYSZY_EXTRA := :NEW.MYSZY_EXTRA + 5;
+          ELSE
+            wirus.nagroda_tygrysa := wirus.nagroda_tygrysa + 5;
+            dbms_output.put_line('Nagroda tygrysa zwiekszyla sie do: ' || wirus.nagroda_tygrysa);
+          END IF;
+        END IF;
     END IF;
-
-    -- Sprawdzanie przekroczenia wartosci dla funkcji:
-    IF :new.przydzial_myszy < f_min
-    THEN
-      :new.przydzial_myszy := f_min;
-    ELSIF :new.przydzial_myszy > f_max
-      THEN
-        :new.przydzial_myszy := f_max;
-    END IF;
-
   END;
 
-CREATE OR REPLACE TRIGGER Zad42_AfterUpdate
-  AFTER UPDATE
-  ON Kocury
-  DECLARE
-    tmp NUMBER DEFAULT 0;
+CREATE OR REPLACE TRIGGER zad42_after_trigger
+  AFTER UPDATE OF PRZYDZIAL_MYSZY
+  ON KOCURY
   BEGIN
-
-    IF Zad42.kara > 0
+    IF wirus.strata_tygrysa > 0 OR wirus.nagroda_tygrysa > 0
     THEN
-      tmp := Zad42.kara;
-      Zad42.kara := 0; -- przeciwdziala petli nieskonczonej
-      UPDATE Kocury SET przydzial_myszy = przydzial_myszy * (1 - (0.1 * tmp)) WHERE pseudo = 'TYGRYS';
+      UPDATE KOCURY
+      SET PRZYDZIAL_MYSZY = wirus.przydzial_tygrysa - wirus.strata_tygrysa,
+        MYSZY_EXTRA       = wirus.myszy_extra_tygrysa + wirus.nagroda_tygrysa
+      WHERE PSEUDO = 'TYGRYS';
     END IF;
-
-    IF Zad42.nagroda > 0
-    THEN
-      tmp := Zad42.nagroda;
-      Zad42.nagroda := 0; -- przeciwdziala petli nieskonczonej
-      UPDATE Kocury SET myszy_extra = myszy_extra + (Zad42.nagroda * 5) WHERE pseudo = 'TYGRYS';
-    END IF;
-
   END;
 
-SELECT *
-FROM Kocury;
-UPDATE Kocury
-SET przydzial_myszy = przydzial_myszy + 1;
-SELECT *
-FROM Kocury;
-ROLLBACK;*/
+BEGIN
+  UPDATE KOCURY
+  SET PRZYDZIAL_MYSZY = 25
+  WHERE FUNKCJA = 'MILUSIA';
+  ROLLBACK;
+END;
 
 -- w drugim wykorzystać wyzwalacz COMPOUND.
 
