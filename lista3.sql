@@ -434,8 +434,81 @@ SELECT *
 FROM Kocury;
 ROLLBACK;*/
 
--- todo w drugim wykorzystać wyzwalacz COMPOUND.
+-- w drugim wykorzystać wyzwalacz COMPOUND.
 
+CREATE OR REPLACE TRIGGER zad42_compound_trigger
+  FOR UPDATE OF PRZYDZIAL_MYSZY
+  ON KOCURY
+COMPOUND TRIGGER
+  przydzial_tygrysa Kocury.PRZYDZIAL_MYSZY%TYPE;
+  biezaca_strata_tygrysa Kocury.PRZYDZIAL_MYSZY%TYPE;
+  strata_tygrysa Kocury.PRZYDZIAL_MYSZY%TYPE;
+  roznica_przydzialu Kocury.PRZYDZIAL_MYSZY%TYPE;
+  nagroda_tygrysa Kocury.MYSZY_EXTRA%TYPE;
+  myszy_extra_tygrysa Kocury.MYSZY_EXTRA%TYPE;
+  BEFORE STATEMENT IS BEGIN
+    SELECT
+      PRZYDZIAL_MYSZY,
+      MYSZY_EXTRA
+    INTO przydzial_tygrysa, myszy_extra_tygrysa
+    FROM KOCURY
+    WHERE PSEUDO = 'TYGRYS';
+    strata_tygrysa := 0;
+    nagroda_tygrysa := 0;
+    biezaca_strata_tygrysa := 0;
+  END BEFORE STATEMENT;
+  BEFORE EACH ROW IS BEGIN
+    IF :NEW.PSEUDO = 'TYGRYS'
+    THEN
+      przydzial_tygrysa := :NEW.PRZYDZIAL_MYSZY - strata_tygrysa;
+      :NEW.PRZYDZIAL_MYSZY := przydzial_tygrysa;
+      strata_tygrysa := 0;
+      biezaca_strata_tygrysa := 0;
+      :NEW.MYSZY_EXTRA := :NEW.MYSZY_EXTRA + nagroda_tygrysa;
+      nagroda_tygrysa := 0;
+      dbms_output.put_line('Przydzial tygrysa zmienil sie z: ' || :OLD.PRZYDZIAL_MYSZY);
+      dbms_output.put_line('Przydzial tygrysa zmienil sie na: ' || przydzial_tygrysa);
+    ELSIF :NEW.FUNKCJA = 'MILUSIA'
+      THEN
+        roznica_przydzialu := :NEW.PRZYDZIAL_MYSZY - :OLD.PRZYDZIAL_MYSZY;
+        IF roznica_przydzialu < 0
+        THEN
+          :NEW.PRZYDZIAL_MYSZY := :OLD.PRZYDZIAL_MYSZY;
+        END IF;
+        IF roznica_przydzialu > 0
+        THEN
+          IF roznica_przydzialu < 0.1 * przydzial_tygrysa
+          THEN
+            biezaca_strata_tygrysa := ROUND(0.1 * (przydzial_tygrysa - strata_tygrysa));
+            :NEW.PRZYDZIAL_MYSZY := :OLD.PRZYDZIAL_MYSZY + biezaca_strata_tygrysa;
+            strata_tygrysa := strata_tygrysa + biezaca_strata_tygrysa;
+            dbms_output.put_line('Strata tygrysa zwiekszyla sie do: ' || strata_tygrysa);
+
+            :NEW.MYSZY_EXTRA := :NEW.MYSZY_EXTRA + 5;
+          ELSE
+            nagroda_tygrysa := nagroda_tygrysa + 5;
+            dbms_output.put_line('Nagroda tygrysa zwiekszyla sie do: ' || nagroda_tygrysa);
+          END IF;
+        END IF;
+    END IF;
+  END BEFORE EACH ROW;
+
+  AFTER STATEMENT IS BEGIN
+    IF strata_tygrysa > 0 OR nagroda_tygrysa > 0
+    THEN
+      UPDATE KOCURY
+      SET PRZYDZIAL_MYSZY = przydzial_tygrysa - strata_tygrysa, MYSZY_EXTRA = myszy_extra_tygrysa + nagroda_tygrysa
+      WHERE PSEUDO = 'TYGRYS';
+    END IF;
+  END AFTER STATEMENT;
+END;
+
+BEGIN
+  UPDATE KOCURY
+  SET PRZYDZIAL_MYSZY = 25
+  WHERE FUNKCJA = 'MILUSIA';
+  ROLLBACK;
+END;
 
 -- Zad. 43. Napisać blok, który zrealizuje zad. 33 w sposób uniwersalny
 -- (bez konieczności uwzględniania wiedzy o funkcjach pełnionych przez koty).
