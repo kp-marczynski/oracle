@@ -535,7 +535,7 @@ begin
   dbms_output.new_line();
 end;
 
--- todo Zad. 44. Tygrysa zaniepokoiło niewytłumaczalne obniżenie zapasów "myszowych".
+-- Zad. 44. Tygrysa zaniepokoiło niewytłumaczalne obniżenie zapasów "myszowych".
 -- Postanowił więc wprowadzić podatek pogłówny, który zasiliłby spiżarnię.
 -- Zarządził więc, że każdy kot ma obowiązek oddawać 5% (zaokrąglonych w górę) swoich całkowitych "myszowych" przychodów.
 -- Dodatkowo od tego co pozostanie:
@@ -546,6 +546,92 @@ end;
 -- Funkcję tą razem z procedurą z zad. 40 należy umieścić w pakiecie,
 -- a następnie wykorzystać ją do określenia podatku dla wszystkich kotów.
 
+CREATE OR REPLACE PACKAGE zad44 AS
+  FUNCTION podatek_myszowy(
+    pseudonim KOCURY.PSEUDO%TYPE
+  )
+    RETURN NUMBER;
+END zad44;
+
+CREATE OR REPLACE PACKAGE BODY zad44 AS
+  FUNCTION podatek_myszowy(
+    pseudonim KOCURY.PSEUDO%TYPE
+  )
+    RETURN NUMBER IS
+    suma_myszy                    NUMBER;
+    banda                         KOCURY.NR_BANDY%TYPE;
+    podatek                       NUMBER;
+    temp                          NUMBER;
+    podatek_brak_podwladnych      NUMBER := 2;
+    podatek_brak_wrogow           NUMBER := 1;
+    podatek_najbogatszy_w_bandzie NUMBER := 5;
+    BEGIN
+      dbms_output.put_line('Obliczanie podatku dla kota o pseudonimie: ' || pseudonim);
+      --podatek podstawowy
+      SELECT
+        NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0),
+        NR_BANDY
+      INTO suma_myszy, banda
+      FROM KOCURY
+      WHERE PSEUDO = pseudonim;
+      podatek := CEIL(0.05 * suma_myszy);
+      dbms_output.put_line('Podstawowy podatek: ' || podatek);
+
+      --podatek za brak podwładnych
+      SELECT COUNT(*)
+      INTO temp
+      FROM KOCURY
+      WHERE SZEF = pseudonim;
+
+      IF temp = 0
+      THEN
+        dbms_output.put_line('Podatek za brak podwładnych: ' || podatek_brak_podwladnych);
+        podatek := podatek + podatek_brak_podwladnych;
+      END IF;
+
+      --podatek za brak wrogow
+      SELECT COUNT(*)
+      INTO temp
+      FROM WROGOWIE_KOCUROW
+      WHERE PSEUDO = pseudonim;
+
+      IF temp = 0
+      THEN
+        dbms_output.put_line('Podatek za brak wrogow: ' || podatek_brak_wrogow);
+        podatek := podatek + podatek_brak_wrogow;
+      END IF;
+
+      --podatek dla najbogatszego w bandzie
+      SELECT MAX(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0))
+      INTO temp
+      FROM KOCURY
+      WHERE NR_BANDY = banda;
+
+      IF temp = suma_myszy
+      THEN
+        dbms_output.put_line('Podatek za bycie najbogatszym w bandzie: ' || podatek_najbogatszy_w_bandzie);
+        podatek := podatek + podatek_najbogatszy_w_bandzie;
+      END IF;
+
+      --obnizenie podatku ze wzgledu na biede
+      IF podatek > suma_myszy
+      THEN
+        dbms_output.put_line('Obnizenie podatku ze wzgledu na biede: ' || podatek - suma_myszy);
+        podatek := suma_myszy;
+      END IF;
+      RETURN podatek;
+    END;
+END zad44;
+
+DECLARE
+  rezult NUMBER;
+BEGIN
+  rezult := zad44.podatek_myszowy('ZERO');
+  dbms_output.put_line('Wynik metody podatek myszowy: ' || rezult);
+  dbms_output.put_line(' ');
+  rezult := zad44.podatek_myszowy('TYGRYS');
+  dbms_output.put_line('Wynik metody podatek myszowy: ' || rezult);
+END;
 
 -- Zad. 45. Tygrys zauważył dziwne zmiany wartości swojego prywatnego przydziału myszy (patrz zadanie 42).
 -- Nie niepokoiły go zmiany na plus ale te na minus były, jego zdaniem, niedopuszczalne.
