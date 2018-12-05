@@ -321,10 +321,8 @@ CREATE OR REPLACE TRIGGER zad42_before_trigger
   BEFORE UPDATE OF PRZYDZIAL_MYSZY
   ON KOCURY
   BEGIN
-    SELECT
-      PRZYDZIAL_MYSZY,
-      MYSZY_EXTRA
-    INTO wirus.przydzial_tygrysa, wirus.myszy_extra_tygrysa
+    SELECT PRZYDZIAL_MYSZY, MYSZY_EXTRA
+        INTO wirus.przydzial_tygrysa, wirus.myszy_extra_tygrysa
     FROM KOCURY
     WHERE PSEUDO = 'TYGRYS';
     wirus.strata_tygrysa := 0;
@@ -380,15 +378,13 @@ CREATE OR REPLACE TRIGGER zad42_after_trigger
     THEN
       UPDATE KOCURY
       SET PRZYDZIAL_MYSZY = wirus.przydzial_tygrysa - wirus.strata_tygrysa,
-        MYSZY_EXTRA       = wirus.myszy_extra_tygrysa + wirus.nagroda_tygrysa
+          MYSZY_EXTRA     = wirus.myszy_extra_tygrysa + wirus.nagroda_tygrysa
       WHERE PSEUDO = 'TYGRYS';
     END IF;
   END;
 
 BEGIN
-  UPDATE KOCURY
-  SET PRZYDZIAL_MYSZY = 25
-  WHERE FUNKCJA = 'MILUSIA';
+  UPDATE KOCURY SET PRZYDZIAL_MYSZY = 25 WHERE FUNKCJA = 'MILUSIA';
   ROLLBACK;
 END;
 
@@ -405,10 +401,8 @@ COMPOUND TRIGGER
   nagroda_tygrysa Kocury.MYSZY_EXTRA%TYPE;
   myszy_extra_tygrysa Kocury.MYSZY_EXTRA%TYPE;
   BEFORE STATEMENT IS BEGIN
-    SELECT
-      PRZYDZIAL_MYSZY,
-      MYSZY_EXTRA
-    INTO przydzial_tygrysa, myszy_extra_tygrysa
+    SELECT PRZYDZIAL_MYSZY, MYSZY_EXTRA
+        INTO przydzial_tygrysa, myszy_extra_tygrysa
     FROM KOCURY
     WHERE PSEUDO = 'TYGRYS';
     strata_tygrysa := 0;
@@ -455,16 +449,15 @@ COMPOUND TRIGGER
     IF strata_tygrysa > 0 OR nagroda_tygrysa > 0
     THEN
       UPDATE KOCURY
-      SET PRZYDZIAL_MYSZY = przydzial_tygrysa - strata_tygrysa, MYSZY_EXTRA = myszy_extra_tygrysa + nagroda_tygrysa
+      SET PRZYDZIAL_MYSZY = przydzial_tygrysa - strata_tygrysa,
+          MYSZY_EXTRA     = myszy_extra_tygrysa + nagroda_tygrysa
       WHERE PSEUDO = 'TYGRYS';
     END IF;
   END AFTER STATEMENT;
 END;
 
 BEGIN
-  UPDATE KOCURY
-  SET PRZYDZIAL_MYSZY = 25
-  WHERE FUNKCJA = 'MILUSIA';
+  UPDATE KOCURY SET PRZYDZIAL_MYSZY = 25 WHERE FUNKCJA = 'MILUSIA';
   ROLLBACK;
 END;
 
@@ -472,7 +465,10 @@ END;
 -- (bez konieczności uwzględniania wiedzy o funkcjach pełnionych przez koty).
 declare
   cursor kursor_funkcje is select FUNKCJA FROM FUNKCJE;
-  cursor kursor_bandy is select KOCURY.NR_BANDY, BANDY.NAZWA, DECODE(PLEC, 'M', 'KOCOR', 'KOTKA') as PLEC, count(*) as ile
+  cursor kursor_bandy is select KOCURY.NR_BANDY,
+                                BANDY.NAZWA,
+                                DECODE(PLEC, 'M', 'KOCOR', 'KOTKA') as PLEC,
+                                count(*)                            as ile
                          from BANDY
                                 JOIN KOCURY on BANDY.NR_BANDY = KOCURY.NR_BANDY
                          group by BANDY.NAZWA, PLEC, KOCURY.NR_BANDY
@@ -568,10 +564,8 @@ CREATE OR REPLACE PACKAGE BODY zad44 AS
     BEGIN
       dbms_output.put_line('Obliczanie podatku dla kota o pseudonimie: ' || pseudonim);
       --podatek podstawowy
-      SELECT
-        NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0),
-        NR_BANDY
-      INTO suma_myszy, banda
+      SELECT NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0), NR_BANDY
+          INTO suma_myszy, banda
       FROM KOCURY
       WHERE PSEUDO = pseudonim;
       podatek := CEIL(0.05 * suma_myszy);
@@ -579,9 +573,7 @@ CREATE OR REPLACE PACKAGE BODY zad44 AS
 
       --podatek za brak podwładnych
       SELECT COUNT(*)
-      INTO temp
-      FROM KOCURY
-      WHERE SZEF = pseudonim;
+          INTO temp FROM KOCURY WHERE SZEF = pseudonim;
 
       IF temp = 0
       THEN
@@ -591,9 +583,7 @@ CREATE OR REPLACE PACKAGE BODY zad44 AS
 
       --podatek za brak wrogow
       SELECT COUNT(*)
-      INTO temp
-      FROM WROGOWIE_KOCUROW
-      WHERE PSEUDO = pseudonim;
+          INTO temp FROM WROGOWIE_KOCUROW WHERE PSEUDO = pseudonim;
 
       IF temp = 0
       THEN
@@ -603,7 +593,7 @@ CREATE OR REPLACE PACKAGE BODY zad44 AS
 
       --podatek dla najbogatszego w bandzie
       SELECT MAX(NVL(PRZYDZIAL_MYSZY, 0) + NVL(MYSZY_EXTRA, 0))
-      INTO temp
+          INTO temp
       FROM KOCURY
       WHERE NR_BANDY = banda;
 
@@ -654,15 +644,13 @@ CREATE OR REPLACE TRIGGER kara_dla_milus
       EXECUTE IMMEDIATE 'COMMIT';
     END IF;
   END;
-  
+
 BEGIN
-  UPDATE KOCURY
-  SET PRZYDZIAL_MYSZY = 34
-  WHERE FUNKCJA = 'MILUSIA';
+  UPDATE KOCURY SET PRZYDZIAL_MYSZY = 34 WHERE FUNKCJA = 'MILUSIA';
   ROLLBACK;
 END;
-SELECT * FROM DODATKI_EXTRA;
-
+SELECT *
+FROM DODATKI_EXTRA;
 
 -- Zad. 46. Napisać wyzwalacz, który uniemożliwi wpisanie kotu przydziału myszy spoza przedziału (min_myszy, max_myszy)
 -- określonego dla każdej funkcji w relacji Funkcje. Każda próba wykroczenia poza obowiązujący przedział
@@ -684,12 +672,8 @@ CREATE OR REPLACE TRIGGER co_z_myszkami
       min_m Funkcje.MIN_MYSZY%TYPE;
       PRAGMA AUTONOMOUS_TRANSACTION;
       BEGIN
-        SELECT
-          MIN_MYSZY,
-          MAX_MYSZY
-        INTO min_m, max_m
-        FROM FUNKCJE
-        WHERE FUNKCJE.FUNKCJA = f;
+        SELECT MIN_MYSZY, MAX_MYSZY
+            INTO min_m, max_m FROM FUNKCJE WHERE FUNKCJE.FUNKCJA = f;
         IF pm > max_m OR pm < min_m
         THEN
           INSERT INTO HISTORIA_WYKROCZEN (LOGIN, DATA_WYKROCZENIA, PSEUDO, OPERACJA)
