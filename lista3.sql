@@ -437,7 +437,7 @@ ROLLBACK;*/
 -- todo w drugim wykorzystać wyzwalacz COMPOUND.
 
 
--- todo Zad. 43. Napisać blok, który zrealizuje zad. 33 w sposób uniwersalny
+-- Zad. 43. Napisać blok, który zrealizuje zad. 33 w sposób uniwersalny
 -- (bez konieczności uwzględniania wiedzy o funkcjach pełnionych przez koty).
 declare
   cursor kursor_funkcje is select FUNKCJA FROM FUNKCJE;
