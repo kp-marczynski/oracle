@@ -10,7 +10,7 @@ BEGIN
   THEN
     DBMS_OUTPUT.PUT_LINE('Znaleziono kota pelniacego funkcje: ' || fun);
   ELSE
-    DBMS_OUTPUT.PUT_LINE('Nie znaleziono kota pelniacego podana funkcje.');
+    DBMS_OUTPUT.PUT_LINE('Nie znaleziono kota pelniacego funkcje: ' || fun);
   end if;
 end;
 
@@ -101,8 +101,8 @@ declare
                    where rownum <= 5;
   licznik NUMBER := 1;
 begin
-  DBMS_OUTPUT.PUT_LINE('Nr  Psedonim  Zjada');
-  DBMS_OUTPUT.PUT_LINE('-------------------');
+  DBMS_OUTPUT.PUT_LINE(RPAD('Nr', 4) || RPAD('Psedonim', 10) || LPAD('Zjada', 5));
+  dbms_output.put_line(LPAD(' ', 20, '-'));
   for rekord in kursor
   loop
     DBMS_OUTPUT.PUT_LINE(RPAD(licznik, 4) || RPAD(rekord.PSEUDO, 10) || LPAD(rekord.ZJADA, 5));
@@ -199,8 +199,8 @@ begin
   then
     raise juz_istnieje;
   end if;
-  insert into BANDY (NR_BANDY, NAZWA, TEREN) values (nowy_nr, nowa_nazwa, nowy_teren);
   dbms_output.put_line('Dodano bande: ' || nowy_nr || ', ' || nowa_nazwa || ', ' || nowy_teren);
+  insert into BANDY (NR_BANDY, NAZWA, TEREN) values (nowy_nr, nowa_nazwa, nowy_teren);
   rollback;
 
   exception
@@ -254,8 +254,8 @@ create or replace procedure nowa_banda(nowy_nr    BANDY.NR_BANDY%TYPE, nowa_nazw
     then
       raise juz_istnieje;
     end if;
-    insert into BANDY (NR_BANDY, NAZWA, TEREN) values (nowy_nr, nowa_nazwa, nowy_teren);
     dbms_output.put_line('Dodano bande: ' || nowy_nr || ', ' || nowa_nazwa || ', ' || nowy_teren);
+    insert into BANDY (NR_BANDY, NAZWA, TEREN) values (nowy_nr, nowa_nazwa, nowy_teren);
 
     exception
     when juz_istnieje
@@ -282,6 +282,7 @@ CREATE OR REPLACE TRIGGER automatyczny_nr_bandy
     max_nr BANDY.nr_bandy%TYPE := 0;
   BEGIN
     SELECT MAX(nr_bandy) INTO max_nr FROM BANDY;
+    dbms_output.put_line('Probowano wstawic nr bandy: ' || :NEW.nr_bandy || ', a wstawiono: ' || (max_nr + 1));
     :NEW.nr_bandy := max_nr + 1;
   END;
 
@@ -291,12 +292,9 @@ declare
 begin
   nowa_banda(nowy_nr=>numer_do_wstawienia, nowa_nazwa=>'KOLESIE', nowy_teren=>'Wroclaw');
   SELECT NR_BANDY into wstawiony_numer FROM BANDY where NAZWA = 'KOLESIE';
-  dbms_output.put_line(
-      'Próbowano wstawić numer: ' || numer_do_wstawienia || ', a wstawiono numer: ' || wstawiony_numer);
   rollback;
 end;
 
-drop trigger automatyczny_nr_bandy;
 -- Zad. 42. Milusie postanowiły zadbać o swoje interesy. Wynajęły więc informatyka, aby zapuścił wirusa w system Tygrysa.
 -- Teraz przy każdej próbie zmiany przydziału myszy na plus (o minusie w ogóle nie może być mowy)
 -- o wartość mniejszą niż 10% przydziału myszy Tygrysa żal Miluś ma być utulony podwyżką ich przydziału
@@ -478,25 +476,18 @@ declare
   suma_czastkowa NUMBER;
 begin
   select count(*) + 3 into l_kolumn from FUNKCJE;
-  dbms_output.put(RPAD('NAZWA BANDY', 20));
-  dbms_output.put(RPAD('PLEC', 10));
-  dbms_output.put(RPAD('ILE', 5));
+  dbms_output.put(RPAD('NAZWA BANDY', 20) || RPAD('PLEC', 10) || RPAD('ILE', 5));
   for rekord in kursor_funkcje
   loop
     dbms_output.put(RPAD(rekord.FUNKCJA, 15));
   end loop;
   dbms_output.put(RPAD('SUMA', 10));
   dbms_output.new_line();
-  for i in 1..l_kolumn
-  loop
-    dbms_output.put('---------------');
-  end loop;
-  dbms_output.new_line();
+  dbms_output.put_line(LPAD(' ', 15 * l_kolumn, '-'));
   for banda_rekord in kursor_bandy
   loop
-    dbms_output.put(RPAD(banda_rekord.NAZWA, 20));
-    dbms_output.put(RPAD(banda_rekord.PLEC, 10));
-    dbms_output.put(RPAD(banda_rekord.ile, 5));
+    dbms_output.put(RPAD(banda_rekord.NAZWA, 20) || RPAD(banda_rekord.PLEC, 10) || RPAD(banda_rekord.ile, 5));
+
     suma_myszy := 0;
     suma_czastkowa := 0;
     for funkcja_rekord in kursor_funkcje
@@ -512,11 +503,7 @@ begin
     dbms_output.put(RPAD(suma_myszy, 10));
     dbms_output.new_line();
   end loop;
-  for i in 1..l_kolumn
-  loop
-    dbms_output.put('---------------');
-  end loop;
-  dbms_output.new_line();
+  dbms_output.put_line(LPAD(' ', 15 * l_kolumn, '-'));
   suma_myszy := 0;
   dbms_output.put(RPAD('ZJADA RAZEM', 35));
   for funkcja_rekord in kursor_funkcje
@@ -547,6 +534,9 @@ CREATE OR REPLACE PACKAGE zad44 AS
     pseudonim KOCURY.PSEUDO%TYPE
   )
     RETURN NUMBER;
+
+  PROCEDURE nowa_banda(nowy_nr    BANDY.NR_BANDY%TYPE, nowa_nazwa BANDY.NAZWA%TYPE,
+                       nowy_teren BANDY.TEREN%TYPE);
 END zad44;
 
 CREATE OR REPLACE PACKAGE BODY zad44 AS
@@ -611,6 +601,58 @@ CREATE OR REPLACE PACKAGE BODY zad44 AS
       END IF;
       RETURN podatek;
     END;
+
+  PROCEDURE nowa_banda(nowy_nr    BANDY.NR_BANDY%TYPE, nowa_nazwa BANDY.NAZWA%TYPE,
+                       nowy_teren BANDY.TEREN%TYPE) is
+    elems_count NUMBER;
+    err_msg     STRING(256);
+      juz_istnieje EXCEPTION;
+      bledny_numer EXCEPTION;
+
+    begin
+      if nowy_nr < 0
+      then
+        raise bledny_numer;
+      end if;
+      select count(NR_BANDY) into elems_count FROM BANDY where NR_BANDY = nowy_nr;
+      if elems_count > 0
+      then
+        err_msg := nowy_nr;
+      end if;
+      select count(*) into elems_count FROM BANDY where NAZWA = nowa_nazwa;
+      if elems_count > 0
+      then
+        if length(err_msg) > 0
+        then
+          err_msg := err_msg || ', ';
+        end if;
+        err_msg := err_msg || nowa_nazwa;
+      end if;
+      select count(*) into elems_count FROM BANDY where TEREN = nowy_teren;
+      if elems_count > 0
+      then
+        if length(err_msg) > 0
+        then
+          err_msg := err_msg || ', ';
+        end if;
+        err_msg := err_msg || nowy_teren;
+      end if;
+
+      if length(err_msg) > 0
+      then
+        raise juz_istnieje;
+      end if;
+      dbms_output.put_line('Dodano bande: ' || nowy_nr || ', ' || nowa_nazwa || ', ' || nowy_teren);
+      insert into BANDY (NR_BANDY, NAZWA, TEREN) values (nowy_nr, nowa_nazwa, nowy_teren);
+
+      exception
+      when juz_istnieje
+      then dbms_output.put_line(err_msg || ': już istnieje');
+      when bledny_numer
+      then dbms_output.put_line('Numer bandy musi być dodatni!');
+      when others
+      then dbms_output.put_line(sqlerrm);
+    end;
 END zad44;
 
 DECLARE
@@ -621,6 +663,10 @@ BEGIN
   dbms_output.put_line(' ');
   rezult := zad44.podatek_myszowy('TYGRYS');
   dbms_output.put_line('Wynik metody podatek myszowy: ' || rezult);
+
+  zad44.nowa_banda(98, 'MYSZACI', 'BIBLIOTEKA');
+
+  rollback;
 END;
 
 -- Zad. 45. Tygrys zauważył dziwne zmiany wartości swojego prywatnego przydziału myszy (patrz zadanie 42).
