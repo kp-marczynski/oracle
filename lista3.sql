@@ -465,12 +465,13 @@ declare
   cursor kursor_funkcje is select FUNKCJA FROM FUNKCJE;
   cursor kursor_bandy is select KOCURY.NR_BANDY,
                                 BANDY.NAZWA,
-                                DECODE(PLEC, 'M', 'KOCOR', 'KOTKA') as PLEC,
+                                PLEC,
+                                DECODE(PLEC, 'M', 'KOCOR', 'KOTKA') as PLEC_NAPIS,
                                 count(*)                            as ile
                          from BANDY
                                 JOIN KOCURY on BANDY.NR_BANDY = KOCURY.NR_BANDY
                          group by BANDY.NAZWA, PLEC, KOCURY.NR_BANDY
-                         order by BANDY.NAZWA, PLEC DESC;
+                         order by BANDY.NAZWA, PLEC;
   l_kolumn       NUMBER;
   suma_myszy     NUMBER;
   suma_czastkowa NUMBER;
@@ -486,7 +487,7 @@ begin
   dbms_output.put_line(LPAD(' ', 15 * l_kolumn, '-'));
   for banda_rekord in kursor_bandy
   loop
-    dbms_output.put(RPAD(banda_rekord.NAZWA, 20) || RPAD(banda_rekord.PLEC, 10) || RPAD(banda_rekord.ile, 5));
+    dbms_output.put(RPAD(banda_rekord.NAZWA, 20) || RPAD(banda_rekord.PLEC_NAPIS, 10) || RPAD(banda_rekord.ile, 5));
 
     suma_myszy := 0;
     suma_czastkowa := 0;
