@@ -1,3 +1,4 @@
+-- ctrl + f8 = enable dbms output
 ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD';
 ALTER SESSION SET NLS_DATE_LANGUAGE = 'ENGLISH';
 
@@ -521,8 +522,13 @@ end;
 -- lub do momentu wyczerpania się zapasów). W obu procedurach należy wykorzystać pierwotne wiązanie masowe.
 drop table myszy cascade constraints;
 
+-- stwórz tabelę myszy
+CREATE OR REPLACE PROCEDURE stworz_tabele_myszy AUTHID CURRENT_USER IS
+  czy_tabela_myszy_istnieje NUMBER := 0;
 BEGIN
-  EXECUTE IMMEDIATE 'CREATE TABLE MYSZY(
+  select count(*) into czy_tabela_myszy_istnieje from user_tables where table_name = 'MYSZY';
+  IF czy_tabela_myszy_istnieje = 0 then
+    EXECUTE IMMEDIATE 'CREATE TABLE MYSZY(
 nr_myszy NUMBER GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) CONSTRAINT pk_myszy PRIMARY KEY,
 lowca VARCHAR2(15) CONSTRAINT fk_myszy_kocury_1 REFERENCES KOCURY(pseudo),
 zjadacz VARCHAR2(15) CONSTRAINT fk_myszy_kocury_2 REFERENCES KOCURY(pseudo),
@@ -531,16 +537,20 @@ data_zlowienia DATE CONSTRAINT req_myszy_1 NOT NULL,
 data_wydania DATE,
 CONSTRAINT check_myszy_2 CHECK(data_zlowienia <= data_wydania)
 )';
+  end if;
+
   EXCEPTION
-  WHEN OTHERS THEN
+  WHEN OTHERS
+  THEN
     DBMS_OUTPUT.PUT_LINE(SQLERRM);
 END;
 
+-- wypełnij danymi archiwalnymi
 -- 2019-01-17 - czwartek
 -- 2004-01-01 - czwartek
 DECLARE
-  TYPE dane_kota IS RECORD (pseudo kocury.pseudo%TYPE, myszy NUMBER(3));
-  TYPE tab_kotow IS TABLE OF dane_kota INDEX BY BINARY_INTEGER;
+  TYPE wiersz_kota IS RECORD (pseudo kocury.pseudo%TYPE, myszy NUMBER(3));
+  TYPE tab_kotow IS TABLE OF wiersz_kota INDEX BY BINARY_INTEGER;
   TYPE wiersz_myszy IS RECORD (lowca myszy.lowca%TYPE, zjadacz myszy.zjadacz%TYPE, waga_myszy myszy.waga_myszy%TYPE,
     data_zlowienia myszy.data_zlowienia%TYPE, data_wydania myszy.data_wydania%TYPE);
   TYPE tab_myszy IS TABLE OF wiersz_myszy INDEX BY BINARY_INTEGER;
@@ -554,6 +564,8 @@ DECLARE
   rozdane_myszy           BINARY_INTEGER := 0;
   ostatni_dzien_ewidencji DATE           := '2019-01-16';
 BEGIN
+  stworz_tabele_myszy();
+
   WHILE dzien_wyplaty <= (next_day(last_day(ostatni_dzien_ewidencji) - 7, 'WEDNESDAY'))
     LOOP
       SELECT pseudo,
@@ -579,7 +591,8 @@ BEGIN
               dane_myszy(myszy_do_rozdania).lowca := koty(j).pseudo;
               dane_myszy(myszy_do_rozdania).waga_myszy := dbms_random.value(10, 100);
               IF dzien_wyplaty > ostatni_dzien_ewidencji then
-                dane_myszy(myszy_do_rozdania).data_zlowienia := TRUNC(pierwszy_dzien_lowienia + dbms_random.value(0, ostatni_dzien_ewidencji - pierwszy_dzien_lowienia));
+                dane_myszy(myszy_do_rozdania).data_zlowienia := TRUNC(pierwszy_dzien_lowienia + dbms_random.value(0,
+                                                                                                                  ostatni_dzien_ewidencji - pierwszy_dzien_lowienia));
               else
                 dane_myszy(myszy_do_rozdania).data_zlowienia :=
                     TRUNC(pierwszy_dzien_lowienia + dbms_random.value(0, 27));
@@ -622,6 +635,206 @@ BEGIN
   THEN
     DBMS_OUTPUT.PUT_LINE(SQLERRM);
 END;
+
+CREATE OR REPLACE PROCEDURE przechowaj_na_prywatnym_koncie(pseudo KOCURY.PSEUDO%TYPE, waga_myszy MYSZY.WAGA_MYSZY%TYPE,
+                                                           data_zlowienia MYSZY.DATA_ZLOWIENIA%TYPE) AUTHID CURRENT_USER IS
+  nazwa_konta VARCHAR2(255) := 'KONTO_' || pseudo;
+  czy_konto_istnieje NUMBER := 0;
+BEGIN
+  select count(*) into czy_konto_istnieje from user_tables where table_name = nazwa_konta;
+  if czy_konto_istnieje = 0 then
+    EXECUTE IMMEDIATE 'CREATE TABLE ' || nazwa_konta || '(
+nr_myszy NUMBER GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) CONSTRAINT pk_' || nazwa_konta || ' PRIMARY KEY,
+waga_myszy NUMBER(3) CONSTRAINT check_' || nazwa_konta || ' CHECK (waga_myszy BETWEEN 10 AND 100),
+data_zlowienia DATE CONSTRAINT req_' || nazwa_konta || ' NOT NULL)';
+  end if;
+  EXECUTE IMMEDIATE 'INSERT INTO ' || nazwa_konta || '(waga_myszy, data_zlowienia) VALUES (' || waga_myszy || ', ''' ||
+                    data_zlowienia || ''' )';
+
+end;
+
+
+CREATE OR REPLACE PROCEDURE przyjmij_myszy_na_stan(pseudo KOCURY.PSEUDO%TYPE) IS
+  TYPE wiersz_konta_kota IS RECORD (waga_myszy MYSZY.WAGA_MYSZY%TYPE, data_zlowienia MYSZY.DATA_ZLOWIENIA%TYPE);
+  TYPE tab_konta_kota IS TABLE OF wiersz_konta_kota INDEX BY BINARY_INTEGER;
+
+  zapasy_kota tab_konta_kota;
+  nazwa_konta VARCHAR2(255) := 'KONTO_' || pseudo;
+  czy_konto_istnieje NUMBER := 0;
+BEGIN
+  select count(*) into czy_konto_istnieje from user_tables where table_name = nazwa_konta;
+  if czy_konto_istnieje > 0 then
+    --     EXECUTE IMMEDIATE 'insert into MYSZY(LOWCA, WAGA_MYSZY, DATA_ZLOWIENIA) select ''' || pseudo ||
+    --                       ''', waga_myszy, data_zlowienia from ' || nazwa_konta;
+    EXECUTE IMMEDIATE 'select waga_myszy, data_zlowienia from ' || nazwa_konta bulk collect into zapasy_kota;
+
+    FORALL j IN 1..(zapasy_kota.count) SAVE EXCEPTIONS
+      INSERT INTO myszy(lowca, waga_myszy, data_zlowienia)
+      VALUES (pseudo, zapasy_kota(j).waga_myszy, zapasy_kota(j).data_zlowienia);
+
+    EXECUTE IMMEDIATE 'delete from ' || nazwa_konta;
+    DBMS_OUTPUT.PUT_LINE('Myszy przyjęto na stan');
+  else
+    DBMS_OUTPUT.PUT_LINE('Kot o wybranym pseudo nie posiada konta');
+  end if;
+
+  --   EXCEPTION
+  --   WHEN OTHERS
+  --   THEN
+  --     DBMS_OUTPUT.PUT_LINE(SQLERRM);
+END;
+
+
+CREATE OR REPLACE PROCEDURE wyplac_myszy(dzien_wyplaty DATE) IS
+  TYPE wiersz_kota IS RECORD (pseudo kocury.pseudo%TYPE, myszy NUMBER(3));
+  TYPE tab_kotow IS TABLE OF wiersz_kota INDEX BY BINARY_INTEGER;
+  TYPE wiersz_myszy IS RECORD (nr_myszy myszy.NR_MYSZY%TYPE);
+  TYPE tab_myszy IS TABLE OF wiersz_myszy INDEX BY BINARY_INTEGER;
+  TYPE wiersz_kolejka IS RECORD (nr_myszy myszy.NR_MYSZY%TYPE, pseudo kocury.pseudo%TYPE);
+  TYPE tab_kolejka IS TABLE OF wiersz_kolejka INDEX BY BINARY_INTEGER;
+
+  koty tab_kotow;
+  dane_myszy tab_myszy;
+  kolejka tab_kolejka;
+
+  dzien_poprzedniej_wyplaty DATE := (next_day(last_day(add_months(dzien_wyplaty, -1)) - 7, 'WEDNESDAY'));
+  ile_myszy_potrzeba NUMBER := 0;
+  wskaznik_kota NUMBER := 1;
+
+  bledna_data EXCEPTION;
+BEGIN
+
+  if dzien_wyplaty <> (next_day(last_day(dzien_wyplaty) - 7, 'WEDNESDAY')) then
+    raise bledna_data;
+  end if;
+
+  SELECT NR_MYSZY bulk collect into dane_myszy
+  from myszy
+  where ZJADACZ is null
+    and DATA_WYDANIA is null
+    and DATA_ZLOWIENIA > dzien_poprzedniej_wyplaty
+    and DATA_ZLOWIENIA <= dzien_wyplaty
+  order by DATA_ZLOWIENIA, NR_MYSZY;
+
+  SELECT pseudo,
+         nvl(przydzial_myszy, 0) + nvl(myszy_extra, 0) "myszy"
+         BULK COLLECT INTO koty
+  FROM kocury
+  WHERE w_stadku_od <= dzien_wyplaty
+  START WITH szef IS NULL
+  CONNECT BY PRIOR pseudo = szef
+  ORDER BY LEVEL ASC, "myszy" DESC;
+
+  for i in 1..koty.COUNT
+    loop
+      ile_myszy_potrzeba := ile_myszy_potrzeba + koty(i).myszy;
+    end loop;
+
+  for i in 1..dane_myszy.COUNT
+    loop
+      if ile_myszy_potrzeba = 0 then
+        exit;
+      end if;
+      while koty(wskaznik_kota).myszy = 0
+        loop
+          wskaznik_kota := wskaznik_kota + 1;
+          if wskaznik_kota > koty.COUNT then
+            wskaznik_kota := 1;
+          end if;
+        end loop;
+      kolejka(i).pseudo := koty(wskaznik_kota).pseudo;
+      kolejka(i).nr_myszy := dane_myszy(i).nr_myszy;
+      koty(wskaznik_kota).myszy := koty(wskaznik_kota).myszy - 1;
+      ile_myszy_potrzeba := ile_myszy_potrzeba - 1;
+
+      wskaznik_kota := wskaznik_kota + 1;
+      if wskaznik_kota > koty.COUNT then
+        wskaznik_kota := 1;
+      end if;
+    end loop;
+
+  while kolejka.COUNT < dane_myszy.count
+    loop
+      kolejka(kolejka.COUNT + 1).pseudo := 'TYGRYS';
+      kolejka(kolejka.COUNT).nr_myszy := dane_myszy(kolejka.COUNT).nr_myszy;
+    end loop;
+
+  forall i in 1..kolejka.count SAVE EXCEPTIONS
+    UPDATE MYSZY m
+    set m.ZJADACZ      = kolejka(i).pseudo,
+        m.DATA_WYDANIA = dzien_wyplaty
+    where NR_MYSZY = kolejka(i).nr_myszy;
+
+
+END;
+
+
+
+----------------------------------------------------------------------------------------------------
+-- pomocnicze
+----------------------------------------------------------------------------------------------------
+
+--   begin
+--     select pseudo from kocury order by POLICZ_SZEFOW(pseudo);
+--   end;
+
+-- create or replace function policz_szefow(podane_pseudo KOCURY.PSEUDO%TYPE) RETURN NUMBER IS
+--   --     declare
+--   ps VARCHAR2(15);
+--   licznik NUMBER := 0;
+--
+-- begin
+--   select szef into ps from KOCURY where pseudo = podane_pseudo;
+--   while ps is not null
+--     loop
+--       licznik := licznik + 1;
+--       select szef into ps from KOCURY where pseudo = ps;
+--     end loop;
+--   return licznik;
+-- end;
+
+  begin
+    wyplac_myszy('2019-01-30');
+  end;
+  SELECT  * FROM KOCURY;
+
+BEGIN
+  SELECT * FROM dba_tables;
+  EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('NOPE');
+    IF SQLCODE != -942 THEN
+      DBMS_OUTPUT.PUT_LINE('NOPE');
+    END IF;
+
+end;
+
+
+declare
+  CURSOR kursor is select table_name
+                   from user_tables
+                   where table_name like 'KONTO\_%' ESCAPE '\';
+begin
+  for rekord in kursor
+    loop
+      execute immediate 'drop table ' || rekord.table_name;
+    end loop;
+end;
+
+select * from konto_tygrys;
+begin
+  for i in 1..100 loop
+  przechowaj_na_prywatnym_koncie('TYGRYS', 10, SYSDATE-45);
+  end loop;
+end;
+
+begin
+  przyjmij_myszy_na_stan('TYGRYS');
+end;
+delete from myszy;
+insert into MYSZY(LOWCA, WAGA_MYSZY, DATA_ZLOWIENIA) select 'TYGRYS', waga_myszy, data_zlowienia from KONTO_TYGRYS;
+select count(*) from user_tables where table_name = 'KOCURY';
+select * from myszy order by NR_MYSZY;
 
 select MAX(NR_MYSZY) from myszy;
 select * from myszy  order by DATA_ZLOWIENIA desc;
