@@ -385,8 +385,49 @@ begin
     end loop;
 end;
 
-CREATE OR REPLACE PROCEDURE stworz_tabele_myszy AUTHID CURRENT_USER IS
-  czy_tabela_myszy_istnieje NUMBER := 0;
+-- CREATE OR REPLACE PROCEDURE stworz_tabele_myszy AUTHID CURRENT_USER IS
+--   czy_tabela_myszy_istnieje NUMBER := 0;
+-- BEGIN
+--   select count(*) into czy_tabela_myszy_istnieje from user_tables where table_name = 'MYSZY';
+--   IF czy_tabela_myszy_istnieje <> 0 then
+--     EXECUTE IMMEDIATE 'drop table myszy cascade constraints';
+--   end if;
+--
+--   EXECUTE IMMEDIATE 'CREATE TABLE MYSZY(
+-- nr_myszy NUMBER GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) CONSTRAINT pk_myszy PRIMARY KEY,
+-- lowca VARCHAR2(15) CONSTRAINT fk_myszy_kocury_1 REFERENCES KOCURY(pseudo),
+-- zjadacz VARCHAR2(15) CONSTRAINT fk_myszy_kocury_2 REFERENCES KOCURY(pseudo),
+-- waga_myszy NUMBER(3) CONSTRAINT check_myszy_1 CHECK (waga_myszy BETWEEN 10 AND 100),
+-- data_zlowienia DATE CONSTRAINT req_myszy_1 NOT NULL,
+-- data_wydania DATE,
+-- CONSTRAINT check_myszy_2 CHECK(data_zlowienia <= data_wydania)
+-- )';
+--
+--   EXCEPTION
+--   WHEN OTHERS
+--   THEN
+--     DBMS_OUTPUT.PUT_LINE(SQLERRM);
+-- END;
+
+-- wypełnij danymi archiwalnymi
+-- 2019-01-17 - czwartek
+-- 2004-01-01 - czwartek
+DECLARE
+  TYPE wiersz_kota IS RECORD (pseudo kocury.pseudo%TYPE, myszy NUMBER(3));
+  TYPE tab_kotow IS TABLE OF wiersz_kota INDEX BY BINARY_INTEGER;
+  TYPE wiersz_myszy IS RECORD (lowca kocury.pseudo%type, zjadacz kocury.pseudo%TYPE, waga_myszy number(3),
+    data_zlowienia date, data_wydania date);
+  TYPE tab_myszy IS TABLE OF wiersz_myszy INDEX BY BINARY_INTEGER;
+
+  koty                      tab_kotow;
+  dane_myszy                tab_myszy;
+  pierwszy_dzien_lowienia   DATE           := '2004-01-01'; --pierwszy dzień łowienia po ostatniej wypłacie
+  dzien_wyplaty             DATE           := (next_day(last_day('2004-01-01') - 7, 'WEDNESDAY')); -- pierwsza ostatnia środa miesiąca po pierwszym dniu łowienia
+  liczba_myszy_w_miesiacu   NUMBER; --suma myszy którą powinny dostać koty w miesiącu, uwzględnia tylko koty które od bieżącego pierwszego dnia łowienia były w stadzie
+  myszy_do_rozdania         BINARY_INTEGER := 0;
+  rozdane_myszy             BINARY_INTEGER := 0;
+  ostatni_dzien_ewidencji   DATE           := '2019-01-16'; -- dzien przed oddaniem listy na zajęciach
+  czy_tabela_myszy_istnieje NUMBER         := 0;
 BEGIN
   select count(*) into czy_tabela_myszy_istnieje from user_tables where table_name = 'MYSZY';
   IF czy_tabela_myszy_istnieje <> 0 then
@@ -402,33 +443,6 @@ data_zlowienia DATE CONSTRAINT req_myszy_1 NOT NULL,
 data_wydania DATE,
 CONSTRAINT check_myszy_2 CHECK(data_zlowienia <= data_wydania)
 )';
-
-  EXCEPTION
-  WHEN OTHERS
-  THEN
-    DBMS_OUTPUT.PUT_LINE(SQLERRM);
-END;
-
--- wypełnij danymi archiwalnymi
--- 2019-01-17 - czwartek
--- 2004-01-01 - czwartek
-DECLARE
-  TYPE wiersz_kota IS RECORD (pseudo kocury.pseudo%TYPE, myszy NUMBER(3));
-  TYPE tab_kotow IS TABLE OF wiersz_kota INDEX BY BINARY_INTEGER;
-  TYPE wiersz_myszy IS RECORD (lowca myszy.lowca%TYPE, zjadacz myszy.zjadacz%TYPE, waga_myszy myszy.waga_myszy%TYPE,
-    data_zlowienia myszy.data_zlowienia%TYPE, data_wydania myszy.data_wydania%TYPE);
-  TYPE tab_myszy IS TABLE OF wiersz_myszy INDEX BY BINARY_INTEGER;
-
-  koty                    tab_kotow;
-  dane_myszy              tab_myszy;
-  pierwszy_dzien_lowienia DATE           := '2004-01-01'; --pierwszy dzień łowienia po ostatniej wypłacie
-  dzien_wyplaty           DATE           := (next_day(last_day('2004-01-01') - 7, 'WEDNESDAY')); -- pierwsza ostatnia środa miesiąca po pierwszym dniu łowienia
-  liczba_myszy_w_miesiacu NUMBER;         --suma myszy którą powinny dostać koty w miesiącu, uwzględnia tylko koty które od bieżącego pierwszego dnia łowienia były w stadzie
-  myszy_do_rozdania       BINARY_INTEGER := 0;
-  rozdane_myszy           BINARY_INTEGER := 0;
-  ostatni_dzien_ewidencji DATE           := '2019-01-16'; -- dzien przed oddaniem listy na zajęciach
-BEGIN
-  stworz_tabele_myszy();
 
   -- powtarzaj do ostatnie wypłaty przed ostatnim dniem ewidencji
   WHILE dzien_wyplaty <= (next_day(last_day(ostatni_dzien_ewidencji) - 7, 'WEDNESDAY'))
