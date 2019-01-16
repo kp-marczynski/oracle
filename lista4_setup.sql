@@ -2,20 +2,21 @@
 ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD';
 ALTER SESSION SET NLS_DATE_LANGUAGE = 'ENGLISH';
 
--- Zad. 47. Założyć, że w stadzie kotów pojawił się podział na elitę i na plebs.
--- Członek elity posiadał prawo do jednego sługi wybranego spośród plebsu.
--- Dodatkowo mógł gromadzić myszy na dostępnym dla każdego członka elity koncie.
--- Konto ma zawierać dane o dacie wprowadzenia na nie pojedynczej myszy i o dacie jej usunięcia.
--- O tym, do kogo należy mysz ma mówić odniesienie do jej właściciela z elity.
--- Przyjmując te dodatkowe założenia zdefiniować schemat bazy danych kotów (bez odpowiedników relacji Funkcje, Bandy, Wrogowie)
--- w postaci relacyjno-obiektowej, gdzie dane dotyczące kotów, elity, plebsu. kont, incydentów będą określane przez odpowiednie typy obiektowe.
--- Dla każdego z typów zaproponować i zdefiniować przykładowe metody.
--- Powiązania referencyjne należy zdefiniować za pomocą typów odniesienia.
--- Tak przygotowany schemat wypełnić danymi z rzeczywistości kotów (dane do opisu elit, plebsu i kont zaproponować samodzielnie)
--- a następnie wykonać przykładowe zapytania SQL, operujące na rozszerzonym schemacie bazy,
--- wykorzystujące referencje (jako realizacje złączeń), podzapytania, grupowanie oraz metody zdefiniowane w ramach typów.
--- Dla każdego z mechanizmów (referencja, podzapytanie, grupowanie) należy przedstawić jeden taki przykład.
--- Zrealizować dodatkowo, w ramach nowego, relacyjno-obiektowego schematu, po dwa wybrane zadania z list nr 2 i 3.
+-- zad. 47 Założyć, że w stadzie kotów pojawił się podział na elitę i na plebs.
+-- -- Członek elity posiadał prawo do jednego sługi wybranego spośród plebsu.
+-- -- Dodatkowo mógł gromadzić myszy na dostępnym dla każdego członka elity koncie.
+-- -- Konto ma zawierać dane o dacie wprowadzenia na nie pojedynczej myszy i o dacie jej usunięcia.
+-- -- O tym, do kogo należy mysz ma mówić odniesienie do jej właściciela z elity.
+-- -- Przyjmując te dodatkowe założenia zdefiniować schemat bazy danych kotów (bez odpowiedników relacji Funkcje, Bandy, Wrogowie)
+-- -- w postaci relacyjno-obiektowej, gdzie dane dotyczące kotów, elity, plebsu. kont, incydentów będą określane przez odpowiednie typy obiektowe.
+-- -- Dla każdego z typów zaproponować i zdefiniować przykładowe metody.
+-- -- Powiązania referencyjne należy zdefiniować za pomocą typów odniesienia.
+-- -- Tak przygotowany schemat wypełnić danymi z rzeczywistości kotów (dane do opisu elit, plebsu i kont zaproponować samodzielnie)
+-- -- a następnie wykonać przykładowe zapytania SQL, operujące na rozszerzonym schemacie bazy,
+-- -- wykorzystujące referencje (jako realizacje złączeń), podzapytania, grupowanie oraz metody zdefiniowane w ramach typów.
+-- -- Dla każdego z mechanizmów (referencja, podzapytanie, grupowanie) należy przedstawić jeden taki przykład.
+-- -- Zrealizować dodatkowo, w ramach nowego, relacyjno-obiektowego schematu, po dwa wybrane zadania z list nr 2 i 3.
+
 
 DROP TABLE KOCUR_OBJ;
 DROP TABLE ELITA_OBJ;
@@ -30,55 +31,55 @@ DROP TYPE PLEBS_TYPE;
 DROP TYPE KOCUR_TYPE;
 
 CREATE OR REPLACE TYPE KOCUR_TYPE AS OBJECT (
-  imie VARCHAR2(15),
-  plec VARCHAR2(1),
-  pseudo VARCHAR2(15),
-  funkcja VARCHAR2(10),
-  szef REF KOCUR_TYPE,
-  w_stadku_od DATE,
-  przydzial_myszy NUMBER(3),
-  myszy_extra NUMBER(3),
-  nr_bandy NUMBER(2),
+                                              imie VARCHAR2(15),
+                                              plec VARCHAR2(1),
+                                              pseudo VARCHAR2(15),
+                                              funkcja VARCHAR2(10),
+                                              szef REF KOCUR_TYPE,
+                                              w_stadku_od DATE,
+                                              przydzial_myszy NUMBER(3),
+                                              myszy_extra NUMBER(3),
+                                              nr_bandy NUMBER(2),
 
-  MEMBER FUNCTION suma_myszy RETURN NUMBER,
-  MEMBER FUNCTION pseudo_szefa RETURN NUMBER
-);
+                                              MEMBER FUNCTION suma_myszy RETURN NUMBER,
+                                              MEMBER FUNCTION pseudo_szefa RETURN NUMBER
+                                            );
 
 CREATE OR REPLACE TYPE PLEBS_TYPE AS OBJECT (
-  nr_plebsu NUMBER,
-  KOCUR REF KOCUR_TYPE,
+                                              nr_plebsu NUMBER,
+                                              KOCUR REF KOCUR_TYPE,
 
-  MEMBER FUNCTION ilu_elitarnym_sluzy RETURN NUMBER
-);
+                                              MEMBER FUNCTION ilu_elitarnym_sluzy RETURN NUMBER
+                                            );
 
 
 CREATE OR REPLACE TYPE ELITA_TYPE AS OBJECT (
-  nr_elity NUMBER,
-  KOCUR REF KOCUR_TYPE,
-  sluga REF PLEBS_TYPE,
+                                              nr_elity NUMBER,
+                                              KOCUR REF KOCUR_TYPE,
+                                              sluga REF PLEBS_TYPE,
 
-  MEMBER FUNCTION get_KOCUR RETURN KOCUR_TYPE,
-  MEMBER FUNCTION imie_kota RETURN VARCHAR2
-);
+                                              MEMBER FUNCTION get_KOCUR RETURN KOCUR_TYPE,
+                                              MEMBER FUNCTION imie_kota RETURN VARCHAR2
+                                            );
 
 CREATE OR REPLACE TYPE KONTO_TYPE AS OBJECT (
-  nr_konta NUMBER,
-  wlasciciel REF ELITA_TYPE,
-  data_wprowadzenia DATE,
-  data_usuniecia DATE,
+                                              nr_konta NUMBER,
+                                              wlasciciel REF ELITA_TYPE,
+                                              data_wprowadzenia DATE,
+                                              data_usuniecia DATE,
 
-  MEMBER FUNCTION pseudo_wlasciciela RETURN VARCHAR2
-);
+                                              MEMBER FUNCTION pseudo_wlasciciela RETURN VARCHAR2
+                                            );
 
 CREATE OR REPLACE TYPE INCYDENT_TYPE AS OBJECT (
-  nr_incydentu NUMBER(3),
-  KOCUR REF KOCUR_TYPE,
-  imie_wroga VARCHAR2(25),
-  data_incydentu DATE,
-  opis_incydentu VARCHAR2(50),
+                                                 nr_incydentu NUMBER(3),
+                                                 KOCUR REF KOCUR_TYPE,
+                                                 imie_wroga VARCHAR2(25),
+                                                 data_incydentu DATE,
+                                                 opis_incydentu VARCHAR2(50),
 
-  MEMBER FUNCTION ile_lat_od_incydentu RETURN NUMBER
-);
+                                                 MEMBER FUNCTION ile_lat_od_incydentu RETURN NUMBER
+                                               );
 
 CREATE TABLE KOCUR_OBJ OF KOCUR_TYPE (
   CONSTRAINT obj_req_kocury CHECK(imie IS NOT NULL),
@@ -106,8 +107,8 @@ CREATE TABLE KONTO_OBJ OF KONTO_TYPE (
   );
 
 CREATE TABLE INCYDENT_OBJ OF INCYDENT_TYPE (
-  CONSTRAINT obj_fk_incydent_kocury KOCUR SCOPE IS KOCUR_OBJ,
-  CONSTRAINT obj_req_incdyent CHECK(data_incydentu IS NOT NULL),
+                                             CONSTRAINT obj_fk_incydent_kocury KOCUR SCOPE IS KOCUR_OBJ,
+                                             CONSTRAINT obj_req_incdyent CHECK(data_incydentu IS NOT NULL),
   CONSTRAINT obj_pk_incydent PRIMARY KEY (nr_incydentu)
   );
 
@@ -160,7 +161,7 @@ CREATE OR REPLACE TYPE BODY PLEBS_TYPE IS
   MEMBER FUNCTION ilu_elitarnym_sluzy RETURN NUMBER IS
     suma NUMBER;
     BEGIN
-      SELECT COUNT(REF(elita)) into suma FROM ELITA_OBJ elita WHERE elita.sluga.KOCUR.PSEUDO = (SELECT DEREF(SELF.KOCUR).PSEUDO FROM dual);
+      SELECT COUNT(*) into suma FROM ELITA_OBJ elita WHERE elita.sluga.KOCUR.PSEUDO = (SELECT DEREF(SELF.KOCUR).PSEUDO FROM dual);
       return suma;
     END;
 END;
@@ -236,86 +237,12 @@ INSERT INTO KONTO_OBJ VALUES (KONTO_TYPE(6,(SELECT REF(elita) FROM ELITA_OBJ eli
 INSERT INTO KONTO_OBJ VALUES (KONTO_TYPE(7,(SELECT REF(elita) FROM ELITA_OBJ elita WHERE elita.KOCUR.pseudo='LYSY'),'2017-05-12',null));
 INSERT INTO KONTO_OBJ VALUES (KONTO_TYPE(8,(SELECT REF(elita) FROM ELITA_OBJ elita WHERE elita.KOCUR.pseudo='ZOMBI'),'2017-05-12',null));
 
-SELECT KOCUR.PSEUDO, KOCUR.suma_myszy() from KOCUR_OBJ KOCUR;
-SELECT  plebs.KOCUR.pseudo, plebs.ilu_elitarnym_sluzy() from PLEBS_OBJ plebs;
-SELECT elita.imie_kota() from ELITA_OBJ elita;
-SELECT konto.pseudo_wlasciciela() from KONTO_OBJ konto;
-SELECT inc.NR_INCYDENTU, inc.ile_lat_od_incydentu() from INCYDENT_OBJ inc;
-
--- Zad. 21. Określić ile kotów w każdej z band posiada wrogów
-SELECT inc.KOCUR.NR_BANDY "Nr bandy", COUNT(DISTINCT inc.KOCUR.PSEUDO) "Koty z wrogami"
-FROM INCYDENT_OBJ inc
-GROUP BY inc.KOCUR.NR_BANDY;
-
--- Zad. 22. Znaleźć koty (wraz z pełnioną funkcją), które posiadają więcej niż jednego wroga.
-SELECT MIN(inc.KOCUR.FUNKCJA) "Funkcja", inc.KOCUR.PSEUDO "Pseudonim kota", COUNT(*) "Liczba wrogow"
-FROM INCYDENT_OBJ inc
-GROUP BY inc.KOCUR.PSEUDO
-HAVING COUNT(*) > 1;
-
--- Zad. 35. Napisać blok PL/SQL, który wyprowadza na ekran następujące informacje o kocie
--- o pseudonimie wprowadzonym z klawiatury (w zależności od rzeczywistych danych):
--- 'calkowity roczny przydzial myszy >700'
--- 'styczeń jest miesiacem przystapienia do stada'
--- 'imię zawiera litere A' 'nie odpowiada kryteriom'.
--- Powyższe informacje wymienione są zgodnie z hierarchią ważności. Każdą wprowadzaną informację poprzedzić imieniem kota.
-DECLARE
-  myszy                NUMBER;
-  w_stadku             KOCUR_OBJ.W_STADKU_OD%type;
-  imie_kota            KOCUR_OBJ.IMIE%type;
-  ps                   KOCUR_OBJ.PSEUDO%type := &ps;
-  nie_spelnia_warunkow BOOLEAN := true;
-BEGIN
-  SELECT kocur.suma_myszy() * 12, kocur.W_STADKU_OD, kocur.IMIE into myszy, w_stadku, imie_kota
-  FROM KOCUR_OBJ kocur
-  WHERE PSEUDO = ps;
-  IF myszy > 700
-  THEN
-    DBMS_OUTPUT.PUT_LINE(imie_kota || ': Calkowity roczny przydzial myszy >700');
-    nie_spelnia_warunkow := false;
-  end if;
-  if EXTRACT(MONTH FROM w_stadku) = 1
-  THEN
-    DBMS_OUTPUT.PUT_LINE(imie_kota || ': Styczen jest miesiacem przystapienia do stada');
-    nie_spelnia_warunkow := false;
-  end if;
-  if imie_kota like '%A%'
-  THEN
-    DBMS_OUTPUT.PUT_LINE(imie_kota || ': imię zawiera litere A');
-    nie_spelnia_warunkow := false;
-  end if;
-  if nie_spelnia_warunkow = true
-  then
-    DBMS_OUTPUT.PUT_LINE(imie_kota || ': Nie spelnia warunkow');
-  end if;
-end;
-
--- Zad. 37. Napisać blok, który powoduje wybranie w pętli kursorowej FOR pięciu kotów o najwyższym całkowitym przydziale myszy.
--- Wynik wyświetlić na ekranie.
-declare
-  cursor kursor is select *
-                   from (select KOCUR.PSEUDO, nvl(KOCUR.PRZYDZIAL_MYSZY, 0) + nvl(KOCUR.MYSZY_EXTRA, 0) "ZJADA"
-                         from KOCUR_OBJ KOCUR
-                         order by "ZJADA" DESC)
-                   where rownum <= 5;
-  licznik NUMBER := 1;
-begin
-  DBMS_OUTPUT.PUT_LINE(RPAD('Nr', 4) || RPAD('Psedonim', 10) || LPAD('Zjada', 5));
-  dbms_output.put_line(LPAD(' ', 20, '-'));
-  for rekord in kursor
-    loop
-      DBMS_OUTPUT.PUT_LINE(RPAD(licznik, 4) || RPAD(rekord.PSEUDO, 10) || LPAD(rekord.ZJADA, 5));
-      licznik := licznik + 1;
-    end loop;
-end;
-
--------------------------------------------------------------------------------------------------------------------------------
--- Zad. 48.* Rozszerzyć relacyjną bazę danych kotów o dodatkowe relacje opisujące elitę, plebs i konta elity (patrz opis z zad. 47)
--- a następnie zdefiniować "nakładkę", w postaci perspektyw obiektowych (bez odpowiedników relacji Funkcje, Bandy, Wrogowie),
--- na tak zmodyfikowaną bazę. Odpowiadające relacjom typy obiektowe mają zawierać przykładowe metody (mogą to być metody z zad. 47).
--- Zamodelować wszystkie powiązania referencyjne z wykorzystaniem identyfikatorów OID i funkcji MAKE_REF.
--- Relacje wypełnić przykładowymi danymi (mogą to być dane z zad. 47).
--- Dla tak przygotowanej bazy wykonać wszystkie zapytania SQL i bloki PL/SQL zrealizowane w ramach zad. 47.
+-- Zad. 48 Rozszerzyć relacyjną bazę danych kotów o dodatkowe relacje opisujące elitę, plebs i konta elity (patrz opis z zad. 47)
+-- -- a następnie zdefiniować "nakładkę", w postaci perspektyw obiektowych (bez odpowiedników relacji Funkcje, Bandy, Wrogowie),
+-- -- na tak zmodyfikowaną bazę. Odpowiadające relacjom typy obiektowe mają zawierać przykładowe metody (mogą to być metody z zad. 47).
+-- -- Zamodelować wszystkie powiązania referencyjne z wykorzystaniem identyfikatorów OID i funkcji MAKE_REF.
+-- -- Relacje wypełnić przykładowymi danymi (mogą to być dane z zad. 47).
+-- -- Dla tak przygotowanej bazy wykonać wszystkie zapytania SQL i bloki PL/SQL zrealizowane w ramach zad. 47.
 
 DROP TABLE ELITY CASCADE CONSTRAINTS;
 DROP TABLE PLEBSY CASCADE CONSTRAINTS;
@@ -421,114 +348,52 @@ SELECT nr_konta,
 FROM KONTA;
 
 
-SELECT KOCUR.PSEUDO, KOCUR.suma_myszy() from KOCURY_NAKLADKA KOCUR;
-SELECT  plebs.KOCUR.pseudo, plebs.ilu_elitarnym_sluzy() from PLEBS_NAKLADKA plebs;
-SELECT elita.imie_kota() from ELITA_NAKLADKA elita;
-SELECT konto.pseudo_wlasciciela() from KONTA_NAKLADKA konto;
-SELECT inc.NR_INCYDENTU, inc.ile_lat_od_incydentu() from INCYDENTY_NAKLADKA inc;
+-- zad. 49 W związku z wejściem do Unii Europejskiej konieczna stała się szczegółowa ewidencja myszy upolowanych i spożywanych.
+-- -- Należało więc odnotowywać zarówno kota, który mysz upolował (wraz z datą upolowania) jak i kota,
+-- -- który mysz zjadł (wraz z datą „wypłaty”). Dodatkowo istotna stała się waga myszy (waga ta musi spełniać Unijną normę (normę tę proszę ustalić)). C
+-- -- o najgorsze, jednak, dane należało uzupełnić w tył zaczynając od 1 stycznia 2004.
+-- -- Niestety, jak to czasami bywa, nastąpiło „niewielkie” opóźnienie w realizacji programu ewidencjonującego upolowane i zjedzone myszy.
+-- -- Dziwnym zbiegiem okoliczności ewidencja ta stała się możliwa dopiero na dzień przed terminem oddawania bieżącej listy.
+-- -- Napisać blok (bloki), który zrealizuje ewidencję, a więc:
+-- -- a. zmodyfikuje schemat bazy danych o nową relację Myszy z atrybutami:
+-- -- nr_myszy (klucz główny), lowca (klucz obcy), zjadacz (klucz obcy), waga_myszy, data_zlowienia, data_wydania (zawsze ostatnia środa miesiąca),
+-- -- b. wypełni relację Myszy sztucznie wygenerowanymi danymi, od 1 stycznia 2004 począwszy,
+-- -- na dniu poprzednim w stosunku do terminu oddania bieżącej listy skończywszy.
+-- -- Liczba wpisanych myszy, upolowanych w konkretnym miesiącu, ma być zgodna z liczbą myszy,
+-- -- które koty otrzymały w ramach „wypłaty” w tym miesiącu (z uwzględnieniem myszy extra).
+-- -- W trakcie uzupełniania danych należy przyjąć założenie, że każdy kot jest w stanie upolować w ciągu miesiąca
+-- -- liczbę myszy równą liczbie myszy spożywanych średnio w ciągu miesiąca przez każdego kota
+-- -- („zagospodarować” ewentualne nadwyżki związane z zaokrągleniami).
+-- -- Daty złowienia myszy mają być ustawione „w miarę” równomiernie w ciągu całego miesiąca. Datą wydania ma być ostatnia środa każdego miesiąca.
+-- -- W rozwiązaniu należy wykorzystać pierwotny dynamiczny SQL (tworzenie nowej relacji) oraz pierwotne wiązanie masowe (wypełnianie relacji wygenerowanymi danymi).
+--
+-- -- Od daty bieżącej począwszy mają być już wpisywane rzeczywiste dane dotyczące upolowanych myszy.
+-- -- Należy więc przygotować procedurę, która umożliwi przyjęcie na stan myszy upolowanych w ciągu dnia przez konkretnego kota
+-- -- (założyć, że dane o upolowanych w ciągu dnia myszach dostępne są w, indywidualnej dla każdego kota, zewnętrznej relacji)
+-- -- oraz procedurę, która umożliwi co miesięczną wypłatę (myszy mają być przydzielane po jednej kolejnym kotom
+-- -- w kolejności zgodnej z pozycją kota w hierarchii stada aż do uzyskania przysługującego przydziału
+-- -- lub do momentu wyczerpania się zapasów). W obu procedurach należy wykorzystać pierwotne wiązanie masowe.
 
--- Zad. 21. Określić ile kotów w każdej z band posiada wrogów
-SELECT inc.KOCUR.NR_BANDY "Nr bandy", COUNT(DISTINCT inc.KOCUR.PSEUDO) "Koty z wrogami"
-FROM INCYDENTY_NAKLADKA inc
-GROUP BY inc.KOCUR.NR_BANDY;
-
--- Zad. 22. Znaleźć koty (wraz z pełnioną funkcją), które posiadają więcej niż jednego wroga.
-SELECT MIN(inc.KOCUR.FUNKCJA) "Funkcja", inc.KOCUR.PSEUDO "Pseudonim kota", COUNT(*) "Liczba wrogow"
-FROM INCYDENTY_NAKLADKA inc
-GROUP BY inc.KOCUR.PSEUDO
-HAVING COUNT(*) > 1;
-
--- Zad. 35. Napisać blok PL/SQL, który wyprowadza na ekran następujące informacje o kocie
--- o pseudonimie wprowadzonym z klawiatury (w zależności od rzeczywistych danych):
--- 'calkowity roczny przydzial myszy >700'
--- 'styczeń jest miesiacem przystapienia do stada'
--- 'imię zawiera litere A' 'nie odpowiada kryteriom'.
--- Powyższe informacje wymienione są zgodnie z hierarchią ważności. Każdą wprowadzaną informację poprzedzić imieniem kota.
-DECLARE
-  myszy                NUMBER;
-  w_stadku             KOCUR_OBJ.W_STADKU_OD%type;
-  imie_kota            KOCUR_OBJ.IMIE%type;
-  ps                   KOCUR_OBJ.PSEUDO%type := &ps;
-  nie_spelnia_warunkow BOOLEAN := true;
-BEGIN
-  SELECT kocur.suma_myszy() * 12, kocur.W_STADKU_OD, kocur.IMIE into myszy, w_stadku, imie_kota
-  FROM KOCURY_NAKLADKA kocur
-  WHERE PSEUDO = ps;
-  IF myszy > 700
-  THEN
-    DBMS_OUTPUT.PUT_LINE(imie_kota || ': Calkowity roczny przydzial myszy >700');
-    nie_spelnia_warunkow := false;
-  end if;
-  if EXTRACT(MONTH FROM w_stadku) = 1
-  THEN
-    DBMS_OUTPUT.PUT_LINE(imie_kota || ': Styczen jest miesiacem przystapienia do stada');
-    nie_spelnia_warunkow := false;
-  end if;
-  if imie_kota like '%A%'
-  THEN
-    DBMS_OUTPUT.PUT_LINE(imie_kota || ': imię zawiera litere A');
-    nie_spelnia_warunkow := false;
-  end if;
-  if nie_spelnia_warunkow = true
-  then
-    DBMS_OUTPUT.PUT_LINE(imie_kota || ': Nie spelnia warunkow');
-  end if;
-end;
-
--- Zad. 37. Napisać blok, który powoduje wybranie w pętli kursorowej FOR pięciu kotów o najwyższym całkowitym przydziale myszy.
--- Wynik wyświetlić na ekranie.
 declare
-  cursor kursor is select *
-                   from (select KOCUR.PSEUDO, nvl(KOCUR.PRZYDZIAL_MYSZY, 0) + nvl(KOCUR.MYSZY_EXTRA, 0) "ZJADA"
-                         from KOCURY_NAKLADKA KOCUR
-                         order by "ZJADA" DESC)
-                   where rownum <= 5;
-  licznik NUMBER := 1;
+  CURSOR kursor is select table_name
+                   from user_tables
+                   where table_name like 'KONTO\_%' ESCAPE '\';
 begin
-  DBMS_OUTPUT.PUT_LINE(RPAD('Nr', 4) || RPAD('Psedonim', 10) || LPAD('Zjada', 5));
-  dbms_output.put_line(LPAD(' ', 20, '-'));
   for rekord in kursor
     loop
-      DBMS_OUTPUT.PUT_LINE(RPAD(licznik, 4) || RPAD(rekord.PSEUDO, 10) || LPAD(rekord.ZJADA, 5));
-      licznik := licznik + 1;
+      execute immediate 'drop table ' || rekord.table_name;
     end loop;
 end;
 
--------------------------------------------------------------------------------------------------------------------------------
--- Zad. 49. W związku z wejściem do Unii Europejskiej konieczna stała się szczegółowa ewidencja myszy upolowanych i spożywanych.
--- Należało więc odnotowywać zarówno kota, który mysz upolował (wraz z datą upolowania) jak i kota,
--- który mysz zjadł (wraz z datą „wypłaty”). Dodatkowo istotna stała się waga myszy (waga ta musi spełniać Unijną normę (normę tę proszę ustalić)). C
--- o najgorsze, jednak, dane należało uzupełnić w tył zaczynając od 1 stycznia 2004.
--- Niestety, jak to czasami bywa, nastąpiło „niewielkie” opóźnienie w realizacji programu ewidencjonującego upolowane i zjedzone myszy.
--- Dziwnym zbiegiem okoliczności ewidencja ta stała się możliwa dopiero na dzień przed terminem oddawania bieżącej listy.
--- Napisać blok (bloki), który zrealizuje ewidencję, a więc:
--- a. zmodyfikuje schemat bazy danych o nową relację Myszy z atrybutami:
--- nr_myszy (klucz główny), lowca (klucz obcy), zjadacz (klucz obcy), waga_myszy, data_zlowienia, data_wydania (zawsze ostatnia środa miesiąca),
--- b. wypełni relację Myszy sztucznie wygenerowanymi danymi, od 1 stycznia 2004 począwszy,
--- na dniu poprzednim w stosunku do terminu oddania bieżącej listy skończywszy.
--- Liczba wpisanych myszy, upolowanych w konkretnym miesiącu, ma być zgodna z liczbą myszy,
--- które koty otrzymały w ramach „wypłaty” w tym miesiącu (z uwzględnieniem myszy extra).
--- W trakcie uzupełniania danych należy przyjąć założenie, że każdy kot jest w stanie upolować w ciągu miesiąca
--- liczbę myszy równą liczbie myszy spożywanych średnio w ciągu miesiąca przez każdego kota
--- („zagospodarować” ewentualne nadwyżki związane z zaokrągleniami).
--- Daty złowienia myszy mają być ustawione „w miarę” równomiernie w ciągu całego miesiąca. Datą wydania ma być ostatnia środa każdego miesiąca.
--- W rozwiązaniu należy wykorzystać pierwotny dynamiczny SQL (tworzenie nowej relacji) oraz pierwotne wiązanie masowe (wypełnianie relacji wygenerowanymi danymi).
-
--- Od daty bieżącej począwszy mają być już wpisywane rzeczywiste dane dotyczące upolowanych myszy.
--- Należy więc przygotować procedurę, która umożliwi przyjęcie na stan myszy upolowanych w ciągu dnia przez konkretnego kota
--- (założyć, że dane o upolowanych w ciągu dnia myszach dostępne są w, indywidualnej dla każdego kota, zewnętrznej relacji)
--- oraz procedurę, która umożliwi co miesięczną wypłatę (myszy mają być przydzielane po jednej kolejnym kotom
--- w kolejności zgodnej z pozycją kota w hierarchii stada aż do uzyskania przysługującego przydziału
--- lub do momentu wyczerpania się zapasów). W obu procedurach należy wykorzystać pierwotne wiązanie masowe.
-drop table myszy cascade constraints;
-
--- stwórz tabelę myszy
 CREATE OR REPLACE PROCEDURE stworz_tabele_myszy AUTHID CURRENT_USER IS
   czy_tabela_myszy_istnieje NUMBER := 0;
 BEGIN
   select count(*) into czy_tabela_myszy_istnieje from user_tables where table_name = 'MYSZY';
-  IF czy_tabela_myszy_istnieje = 0 then
-    EXECUTE IMMEDIATE 'CREATE TABLE MYSZY(
+  IF czy_tabela_myszy_istnieje <> 0 then
+    EXECUTE IMMEDIATE 'drop table myszy cascade constraints';
+  end if;
+
+  EXECUTE IMMEDIATE 'CREATE TABLE MYSZY(
 nr_myszy NUMBER GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) CONSTRAINT pk_myszy PRIMARY KEY,
 lowca VARCHAR2(15) CONSTRAINT fk_myszy_kocury_1 REFERENCES KOCURY(pseudo),
 zjadacz VARCHAR2(15) CONSTRAINT fk_myszy_kocury_2 REFERENCES KOCURY(pseudo),
@@ -537,7 +402,6 @@ data_zlowienia DATE CONSTRAINT req_myszy_1 NOT NULL,
 data_wydania DATE,
 CONSTRAINT check_myszy_2 CHECK(data_zlowienia <= data_wydania)
 )';
-  end if;
 
   EXCEPTION
   WHEN OTHERS
@@ -557,74 +421,88 @@ DECLARE
 
   koty                    tab_kotow;
   dane_myszy              tab_myszy;
-  pierwszy_dzien_lowienia DATE           := '2004-01-01';
-  dzien_wyplaty           DATE           := (next_day(last_day('2004-01-01') - 7, 'WEDNESDAY'));
-  liczba_myszy_w_miesiacu NUMBER;
+  pierwszy_dzien_lowienia DATE           := '2004-01-01'; --pierwszy dzień łowienia po ostatniej wypłacie
+  dzien_wyplaty           DATE           := (next_day(last_day('2004-01-01') - 7, 'WEDNESDAY')); -- pierwsza ostatnia środa miesiąca po pierwszym dniu łowienia
+  liczba_myszy_w_miesiacu NUMBER;         --suma myszy którą powinny dostać koty w miesiącu, uwzględnia tylko koty które od bieżącego pierwszego dnia łowienia były w stadzie
   myszy_do_rozdania       BINARY_INTEGER := 0;
   rozdane_myszy           BINARY_INTEGER := 0;
-  ostatni_dzien_ewidencji DATE           := '2019-01-16';
+  ostatni_dzien_ewidencji DATE           := '2019-01-16'; -- dzien przed oddaniem listy na zajęciach
 BEGIN
   stworz_tabele_myszy();
 
+  -- powtarzaj do ostatnie wypłaty przed ostatnim dniem ewidencji
   WHILE dzien_wyplaty <= (next_day(last_day(ostatni_dzien_ewidencji) - 7, 'WEDNESDAY'))
     LOOP
+      -- wybierz koty które od bieżącego pierwszego dnia łowienia były w stadzie
       SELECT pseudo,
              nvl(przydzial_myszy, 0) + nvl(myszy_extra, 0)
              BULK COLLECT INTO koty
       FROM kocury
       WHERE w_stadku_od <= pierwszy_dzien_lowienia;
 
+      -- policz średnią liczbę myszy którą powinien złowić każdy kot
       SELECT CEIL(AVG(nvl(przydzial_myszy, 0) + nvl(myszy_extra, 0)))
              INTO liczba_myszy_w_miesiacu
       FROM kocury
       WHERE w_stadku_od <= pierwszy_dzien_lowienia;
 
+      -- jeśli dzień wypłaty później niż ostatni dzień ewidencji to odpowiednio pomniejsz liczbę myszy do zaewidencjonowania
       IF dzien_wyplaty > ostatni_dzien_ewidencji then
         liczba_myszy_w_miesiacu :=
             ROUND(liczba_myszy_w_miesiacu * (ostatni_dzien_ewidencji - pierwszy_dzien_lowienia) / 30);
       end if;
 
+      --dla każdego kota przydziel tyle myszy ile powinien dostać w miesiącu
       FOR j IN 1..koty.COUNT
         LOOP
           FOR k IN 1..liczba_myszy_w_miesiacu
             LOOP
               dane_myszy(myszy_do_rozdania).lowca := koty(j).pseudo;
               dane_myszy(myszy_do_rozdania).waga_myszy := dbms_random.value(10, 100);
+
+              -- date zlowienia ustaw w dopuszczalnym przedziale
               IF dzien_wyplaty > ostatni_dzien_ewidencji then
                 dane_myszy(myszy_do_rozdania).data_zlowienia := TRUNC(pierwszy_dzien_lowienia + dbms_random.value(0,
                                                                                                                   ostatni_dzien_ewidencji - pierwszy_dzien_lowienia));
               else
                 dane_myszy(myszy_do_rozdania).data_zlowienia :=
-                    TRUNC(pierwszy_dzien_lowienia + dbms_random.value(0, 27));
+                    TRUNC(pierwszy_dzien_lowienia + dbms_random.value(0, dzien_wyplaty - pierwszy_dzien_lowienia));
               end if;
 
-              dane_myszy(myszy_do_rozdania).data_wydania := dzien_wyplaty;
+              -- po każdej utworzonej myszy zwiększ licznik myszy do rozdania
               myszy_do_rozdania := myszy_do_rozdania + 1;
 
             END LOOP;
         END LOOP;
 
       IF dzien_wyplaty <= ostatni_dzien_ewidencji then
+        -- każdemu kotu przydziel tyle myszy ile powinien dostć w danym miesiącu
         FOR j IN 1..koty.COUNT
           LOOP
             FOR k IN 1..koty(j).myszy
               LOOP
+                dane_myszy(rozdane_myszy).data_wydania := dzien_wyplaty;
                 dane_myszy(rozdane_myszy).zjadacz := koty(j).pseudo;
+
                 rozdane_myszy := rozdane_myszy + 1;
               END LOOP;
           END LOOP;
 
+        -- wszystkie nadmiarowe myszy (CEIL) daj Tygrysowi
         WHILE rozdane_myszy < myszy_do_rozdania
           LOOP
+            dane_myszy(rozdane_myszy).data_wydania := dzien_wyplaty;
             dane_myszy(rozdane_myszy).zjadacz := 'TYGRYS';
             rozdane_myszy := rozdane_myszy + 1;
           END LOOP;
       END IF;
 
+      -- ustaw nowy pierwszy dzień łowienia i wypłaty
       pierwszy_dzien_lowienia := dzien_wyplaty + 1;
       dzien_wyplaty := (next_day(last_day(add_months(dzien_wyplaty, 1)) - 7, 'WEDNESDAY'));
     END LOOP;
 
+  -- wstaw naraz wszystko do bazy (ok 160k rekordów)
   FORALL j IN 0..(dane_myszy.count - 1) SAVE EXCEPTIONS
     INSERT INTO myszy(lowca, zjadacz, waga_myszy, data_zlowienia, data_wydania)
     VALUES (dane_myszy(j).lowca, dane_myszy(j).zjadacz, dane_myszy(j).waga_myszy, dane_myszy(j).data_zlowienia,
@@ -636,21 +514,33 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE(SQLERRM);
 END;
 
-CREATE OR REPLACE PROCEDURE przechowaj_na_prywatnym_koncie(pseudo KOCURY.PSEUDO%TYPE, waga_myszy MYSZY.WAGA_MYSZY%TYPE,
+CREATE OR REPLACE PROCEDURE przechowaj_na_prywatnym_koncie(ps KOCURY.PSEUDO%TYPE, waga_myszy MYSZY.WAGA_MYSZY%TYPE,
                                                            data_zlowienia MYSZY.DATA_ZLOWIENIA%TYPE) AUTHID CURRENT_USER IS
-  nazwa_konta VARCHAR2(255) := 'KONTO_' || pseudo;
+  nazwa_konta VARCHAR2(255) := 'KONTO_' || ps;
   czy_konto_istnieje NUMBER := 0;
+  czy_kot_istnieje NUMBER := 0;
 BEGIN
-  select count(*) into czy_konto_istnieje from user_tables where table_name = nazwa_konta;
-  if czy_konto_istnieje = 0 then
-    EXECUTE IMMEDIATE 'CREATE TABLE ' || nazwa_konta || '(
+  select count(*) into czy_kot_istnieje from KOCURY where pseudo = ps;
+  if czy_kot_istnieje = 0 then
+    DBMS_OUTPUT.PUT_LINE('Kot o pseudo ' || ps || 'nie istnieje.');
+  else
+    select count(*) into czy_konto_istnieje from user_tables where table_name = nazwa_konta;
+    if czy_konto_istnieje = 0 then
+      EXECUTE IMMEDIATE 'CREATE TABLE ' || nazwa_konta || '(
 nr_myszy NUMBER GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) CONSTRAINT pk_' || nazwa_konta || ' PRIMARY KEY,
 waga_myszy NUMBER(3) CONSTRAINT check_' || nazwa_konta || ' CHECK (waga_myszy BETWEEN 10 AND 100),
 data_zlowienia DATE CONSTRAINT req_' || nazwa_konta || ' NOT NULL)';
+    end if;
+    EXECUTE IMMEDIATE 'INSERT INTO ' || nazwa_konta || '(waga_myszy, data_zlowienia) VALUES (' || waga_myszy ||
+                      ', ''' ||
+                      data_zlowienia || ''' )';
+    DBMS_OUTPUT.PUT_LINE('Dodano mysz na konto kota ' || ps);
   end if;
-  EXECUTE IMMEDIATE 'INSERT INTO ' || nazwa_konta || '(waga_myszy, data_zlowienia) VALUES (' || waga_myszy || ', ''' ||
-                    data_zlowienia || ''' )';
 
+  EXCEPTION
+  WHEN OTHERS
+  THEN
+    DBMS_OUTPUT.PUT_LINE(SQLERRM);
 end;
 
 
@@ -767,74 +657,3 @@ BEGIN
 
 
 END;
-
-
-
-----------------------------------------------------------------------------------------------------
--- pomocnicze
-----------------------------------------------------------------------------------------------------
-
---   begin
---     select pseudo from kocury order by POLICZ_SZEFOW(pseudo);
---   end;
-
--- create or replace function policz_szefow(podane_pseudo KOCURY.PSEUDO%TYPE) RETURN NUMBER IS
---   --     declare
---   ps VARCHAR2(15);
---   licznik NUMBER := 0;
---
--- begin
---   select szef into ps from KOCURY where pseudo = podane_pseudo;
---   while ps is not null
---     loop
---       licznik := licznik + 1;
---       select szef into ps from KOCURY where pseudo = ps;
---     end loop;
---   return licznik;
--- end;
-
-  begin
-    wyplac_myszy('2019-01-30');
-  end;
-  SELECT  * FROM KOCURY;
-
-BEGIN
-  SELECT * FROM dba_tables;
-  EXCEPTION
-  WHEN OTHERS THEN
-    DBMS_OUTPUT.PUT_LINE('NOPE');
-    IF SQLCODE != -942 THEN
-      DBMS_OUTPUT.PUT_LINE('NOPE');
-    END IF;
-
-end;
-
-
-declare
-  CURSOR kursor is select table_name
-                   from user_tables
-                   where table_name like 'KONTO\_%' ESCAPE '\';
-begin
-  for rekord in kursor
-    loop
-      execute immediate 'drop table ' || rekord.table_name;
-    end loop;
-end;
-
-select * from konto_tygrys;
-begin
-  for i in 1..100 loop
-  przechowaj_na_prywatnym_koncie('TYGRYS', 10, SYSDATE-45);
-  end loop;
-end;
-
-begin
-  przyjmij_myszy_na_stan('TYGRYS');
-end;
-delete from myszy;
-insert into MYSZY(LOWCA, WAGA_MYSZY, DATA_ZLOWIENIA) select 'TYGRYS', waga_myszy, data_zlowienia from KONTO_TYGRYS;
-select count(*) from user_tables where table_name = 'KOCURY';
-select * from myszy order by NR_MYSZY;
-
-select MAX(NR_MYSZY) from myszy;
-select * from myszy  order by DATA_ZLOWIENIA desc;
