@@ -22,6 +22,17 @@ from (SELECT inc.KOCUR.pseudo, count(*) "liczba incydentow"
       ORDER BY "liczba incydentow" desc, inc.KOCUR.PSEUDO)
 where rownum <= 5;
 
+-- Zad. 19. Dla kotów pełniących funkcję KOT i MILUSIA wyświetlić w kolejności hierarchii imiona wszystkich ich szefów.
+-- Zadanie rozwiązać na trzy sposoby:
+-- a. z wykorzystaniem tylko złączeń,
+SELECT K1.IMIE           "Imie",
+       K1.FUNKCJA        "Funkcja",
+       NVL(K1.SZEF.IMIE, ' ') "Szef 1",
+       NVL(K1.SZEF.SZEF.IMIE, ' ') "Szef 2",
+       NVL(K1.SZEF.SZEF.SZEF.IMIE, ' ') "Szef 3"
+FROM KOCUR_OBJ K1
+WHERE K1.FUNKCJA IN ('KOT', 'MILUSIA');
+
 -- Zad. 21. Określić ile kotów w każdej z band posiada wrogów
 SELECT inc.KOCUR.NR_BANDY "Nr bandy", COUNT(DISTINCT inc.KOCUR.PSEUDO) "Koty z wrogami"
 FROM INCYDENT_OBJ inc
